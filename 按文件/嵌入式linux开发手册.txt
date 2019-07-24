@@ -1,0 +1,15 @@
+1.嵌入式编程基础知识
+  arm-linux-gcc选项
+  C/C++文件需要经过预编译，编译，汇编，链接四步才能生成可执行文件
+  arm-linux-gcc -o hello hello.c
+  选项 -c 预编译，编译，汇编，但不链接  .o文件
+       -S 预编译，编译，不汇编，不链接  .s文件
+	   -E 仅预汇编
+	   -o                               默认.out文件
+	   可以使用-o选项选择其他名字，例如
+	   gcc -c -o main.o main.c
+	   gcc -S -o main.s main.c
+	   gcc -o text main.o
+	   -v 显示过程
+	   -Wall 编译时显示警告信息
+	   

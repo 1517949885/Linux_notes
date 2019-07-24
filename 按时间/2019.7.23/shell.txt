@@ -1,0 +1,83 @@
+1.shell介绍
+shell是操作系统的终端命令行
+shell可以理解为软件系统提供给用户操作的命令行界面，可以说他是人机交互的一种方式
+shell脚本//执行很多的命令，写在shell脚本
+shell是一类编程语言
+    编写shell脚本时使用的语言就是shell语言，又叫脚本语言
+	常用的shell语言:sh,bash,csh,ksh,python
+	linux下常用的脚本语言，sh，bash
+脚本语言在嵌入式中的应用主要用来做配置，一个复杂的嵌入式程序是可配置的，配置过程就是用
+脚本语言来实现的。
+shell脚本的运行机制：解释运行
+c语言等一些语言，编写好源程序后需要编译链接形成可执行二进制文件才能运行，脚本语言编写好
+源程序即可直接运行。
+2.手动写一个shell脚本
+shell是在linux下运行的，shell程序中换行符是\n。而Windows下是\r\n，因此Windows下编写
+的shell不能再linux下运行,因此要在Linux下编辑（用vi编辑器）
+无编译器，不需要编译
+运行方法（需要这个脚本有可执行权限）
+①./xx.sh   需要设置文件权限  chmod a+x xx.sh
+②source xx.sh   source是一个命令
+③bash xx.sh 
+内容： 
+第一行:#!/bin/sh    shell会被/bin/sh执行
+dash是ubuntu中默认使用的脚本解释器，及sh
+第二行：脚本注释:#
+内容
+可以把第一行也可以写成/bin/bash,使用bash来执行程序
+运行shell脚本和在命令行输入效果是一样的，就是把在命令行输入的命令挪到脚本中一次执行
+3.shell的编程
+  在shell下使用linux命令
+  练习，建立文件夹和文件
+  #!/bin/sh
+  mkdir 2.3
+  cd 2.3
+  touch a
+  cd ..
+  shell中的变量定义和引用，弱类型语言变量没有明确的类型。
+  变量的初始化和赋值，变量名的赋值等于号两侧不能有空格
+  string="hello world"
+  echo $string
+  如果是用$解析一个没有定义的变量，默认这个变量为空
+4.转义字符和分支结构
+  反斜杠(\):使用反斜杠后面的一个变量变为单纯的字符串
+  单引号中：完全字面替换,变成单纯的字符串
+  例如  echo 'hello \\ world'
+  hello \\ world
+  双引号中：保留其中的变量属性，不进行转义处理
+  例如 
+  echo "$a$"
+  $ 
+  echo "hello \$ world"
+  hello $ world
+  反引号(``)：把其中的命令执行返回结果
+  例如
+  echo "`pwd`"
+  输出路径
+  echo "`pwd`/include"
+  输出路径/include
+  典型的if语言格式
+  if [表达式]；then
+  xxx
+  xxx
+  else
+  xxxx
+  fi
+  注意空格必须有
+  详细见文件
+   ①判断文件是否存在
+  if [ -f a.txt ];then
+   ②判断目录是否存在
+  if [ -d a ];then
+   ③判断字符串相等
+  if [ ”123“=”123“];then
+  ④判断数字是否相等(-eq),(-gt),(-lt),(-ge),(-le)
+  ⑤判断字符串是否为空 -z
+  
+
+
+
+  
+
+  
+

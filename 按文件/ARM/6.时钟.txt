@@ -1,0 +1,67 @@
+1.时钟
+     时钟是同步工作系统的同步节拍，Soc内部很多器件协同工作需要一个时钟。
+	 Soc时钟的获取
+	 1.外部时钟信号输入
+	 2.外部晶振+内部时钟发生器
+	 3.外部晶振+内部时钟发生器+内部PLL(锁相环，倍频)产生高频时钟+内部分频产生各种时钟  //210属于
+	 每个外设都有自己的分频器，时钟信号先通过PLL倍频得到一个高频时钟，然后在分频得到使用的外设时钟
+	 工作频率800M-1.2G，一般设置到1G，1.2G超频，发热了增大，稳定性不好
+	 每个外设工作都需要一定频率的时钟，通过分频制定外设工作时钟
+	 频率越高功耗越大，越不稳定，外设不需要的时候最好关掉。通过断掉时钟关闭。
+2.S5PV210的时钟
+     时钟域:MSYS,DSYS,PSYS,彼此独立，通过桥接链接
+	 MSYS:200M频率总线  CPU(cortex a8内核)，DRAM控制器(DCM0,DCM1),内部IROM,SRAM.......
+	 DSYS:166M频率总线  和视频显示编解码有关的
+	 PSYS:133M频率 总线 和Soc内部外设有关，串口,SD,USB,I2C等
+	 S5PV210外部有4个晶振接口，设计板子硬件可以根据需求决定在哪接晶振。
+	 PLL:APLL,MPLL,EPLL,VPLL
+	 APLL:cortex-a8内核,MSYS域
+	 MPLL&EPLL:DSYS,PSYS
+	 VPLL:vedio
+3.时钟域详解
+     ①MSYS域
+	 ARMCLK:给CPU工作的时钟
+	 HCLK_MSYS:MSYS域的高频时钟,DCM0,DCM1
+	 PCLK_MSYS:MSYS域的低频时钟
+     HCLK_IMEM:给iRAM,iROM使用
+	 ②DSYS域
+	 HCLK_DSYS:DSYS域的高频时钟
+	 PCLK_DSYS:DSYS域的低频时钟
+	 ③PSYS域
+	 HCLK_PSYS:PSYS域的高频时钟
+	 PCLK_PSYS:PSYS域的低频时钟
+	 CLK_ONENAND:
+	 210上电时外部晶振+内部时钟发生器产生24M的主频，运行较慢，时钟系统初始化后，主频改变，运行较快
+	 各时钟的典型值
+	 • freq(ARMCLK) = 1000 MHz
+	 • freq(HCLK_MSYS) = 200 MHz
+	 • freq(HCLK_IMEM) = 100 MHz
+	 • freq(PCLK_MSYS) = 100 MHz
+	 • freq(HCLK_DSYS) = 166 MHz
+	 • freq(PCLK_DSYS) = 83 MHz
+	 • freq(HCLK_PSYS) = 133 MHz
+	 • freq(PCLK_PSYS) = 66 MHz
+	 • freq(SCLK_ONENAND) = 133 MHz, 166 MHz
+3.时钟体系框图
+     MUX开关就是或门，多选一
+	 DIV分频器，将左边频率N分频输出
+	 寄存器中的CLK_SRCx选择设置MUX开关
+	 寄存器中的CLK_DIVx选择设置DIV分频器
+4.时钟寄存器的设置
+     PLL_LOCK:APLL,MPLL,EPLL,VPLL,锁相环的锁定周期，默认值即可
+	 PLL_CON:有些PLL有两个配置寄存器，有些有一个配置寄存器，打开PLL，
+	 设置倍频FOUT = MDIV X FIN / (PDIV × 2SDIV-1)
+	 CLK_SRCx:x是0-6，是MUX开关的选择，来设置时钟
+	 CLK_SRC_MASKx:x是0-1,是时钟是否能通过，默认全部打开，但是这样功耗大
+	 CLK_DIVx:x是0-7,选择设置DIV分频器
+	 CLK_GATE_IPx:类似于CLK_SRC_MASKx，也是开关
+	 CLK_DIV_STATx,CLK_MUX_STATx：状态寄存器，可以查看状态，状态切换完成置1
+5.汇编实现时钟初始化
+     第一步:关闭PLL，先不选PLL
+	 第二步:设置锁定时间,默认值是0XFFF，我们可以设置成0xFFFF
+	 第三步:设置倍频PLL和分频系数DIV //CLK_DIVx  PLL_CON
+	 第四步:打开PLL。
+	 
+6.C语言实现时钟初始化
+	 
+	 

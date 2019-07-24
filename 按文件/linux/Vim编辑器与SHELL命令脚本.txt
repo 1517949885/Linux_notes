@@ -1,0 +1,242 @@
+﻿Vim文本编辑器
+三种模式：命令模式，输入模式，末行模式
+进入Vim文本编译器默认为命令模式，需要切换到（a,i,o）输入模式后再进行文档编辑，编写完文档后要先切换到(ESC)命令模式,在进入到（:）末行模式，执行文档的保存或者退出操作。
+  a光标后一位切换到输入模式
+  i光标前一位切换到输入模式
+  o光标的下面再创建一个空行
+  Vim中常用的命令
+  dd删除光标所在的行
+  5dd删除从光标开始出的五行
+  yy复制光标所在的行
+  5yy复制从光标开始的五行
+  u撤销上一步的操作
+  P将刚才杀出或者复制的内容粘贴在光标后面
+  N 显示搜索命令定位到上一个字符串
+  n 显示搜索命令定位到下一个字符串
+末行模式可用的命令
+  :w保存
+  :q退出
+  :q!强制退出
+  :wq！强制保存退出
+  :set nu显示行号
+  :set nonu不显示行号
+  :命令  执行该命令
+  :数字  跳转到该行
+  /字符串  从上到下搜索该字符串
+  ？字符串 从下到上
+  :s/one/two  将当前光标所在行的第一个one替换成two
+  :s/one/two/g 将当前光标所在行的所有one替换成two
+  :%s/one/two/g 将全文的one替换成two
+配置主机名称：
+   为了对主机进行区分，除了要有IP地址外，还要为主机配置一个主机名，主机之间可以通过类似这个域名
+   的名称来相互访问。在Linux系统中，主机名大部分保存在/etc/hostname,接下来将主机名改为
+   Linuxprobe.com.
+   hostname用来查看当前的主机名称，如果修改后还是现实以前的主机名称，可以重启虚拟机
+配置网卡信息
+   网卡IP地址配置的是否正确是两台服务器是否可以互相通信的前提
+   在RHEL7中，网卡配置文件的前缀以ifcfg开头，加上网卡名称共同组成网卡配置文件的名字：
+   例如：ifcfg-eno16777736.
+   配置步骤（配置为开机启动，IP地址，子网网关等信息由人工决定）：
+   1.切换到目录:/etc/sysconfig/network_scripts
+   2.进入ifcfg-eno1677737文件
+   TYPE="Ethernet"
+   BOOTPROTO=static       //地址分配模式
+   DEFROUTE="yes"
+   IPV4_FAILURE_FATAL="yes"
+   IPV6INIT="yes"
+   IPV6_AUTOCONF="yes"
+   IPV6_DEFROUTE="yes"
+   IPV6_FAILURE_FATAL="no"
+   NAME="eno16777736"
+   UUID="db7eb4af-869c-422e-8716-d168846cff18"
+   DEVICE="eno16777736"
+   ONBOOT="yes"
+   IPADDR=192.168.9.108     
+   //IP地址
+   NETMASK=255.255.255.0    
+   //子网掩码
+   GATEWAY=192.168.9.1      
+   //网关地址
+   DNS1=192.168.9.1         
+   // DNS地址
+   3.重启网络服务并测试网络是否连通。
+    systemctl restart network
+	ping IP
+配置Yum软件仓库
+   1.进入到/etc/yum.repos.d/目录
+   2.使用 Vim编辑器创建一个名为 rhel7.repo的新配置文件,配置参数
+   [rhel7]
+   name=rhel7
+   baseurl=file:///media/cdrom
+   enabled=1
+   gpgcheck=1
+   gpgcheck=file:///media/cdrom/RPM-GPG-KEY-redhat-release
+
+   3.按配置参数的路径挂载光盘，并把信息写入到 ：etc/fstab 文件中
+   mkdir /media/cdrom
+   mount /dev/cdrom /media/cdrom
+   vi /etc/fstab
+   /dev/sr0 /media/cdrom iso9660 defaults 0 0
+   4.使用yum install httpd -y 检测yum库是否可以使用
+编写Shell脚本
+    Shell脚本命令的工作方式有两种：交互式和批处理
+	交互式：用户每输入一条命令就立即执行
+	批处理：由用户事先编写好的一个完整的Shell脚本，Shell会一次性执行脚本中的命令
+  编写简单的Shell脚本
+     Shell脚本文件名称可以任意，为了避免误认为普通文件，一般后缀为.sh。
+	    #!/bin/bash
+	    #for example by linuxprobe.com
+	    pwd
+	    ls -al
+	    第一行的脚本声明(#!)用来告诉系统使用哪种Shell解释器来执行该脚本
+	    第二行的注释信息(#)是对脚本功能和某些命令的介绍信息
+	    第三四行执行的语句就是linux命令
+	执行：bash example.sh或输入完整的路径执行(./example.sh),但是第二种需要为脚本文件增加执行
+	权限：chmod u+x example.sh
+   接收用户的参数
+     可以内设用于接受参数的变量，变量之间用空格隔开
+	 例如：$0对应的是当前Shell脚本程序的名称，$#对应的是总共有几个参数，$*对应的所有位置
+	 的参数值,$?对应的是显示上一次命令的执行返回值，而$1,$2,$3,$4..则分别对应第N个位置的
+	 参数值
+	 sh example.sh one two three four    //后面的为输入参数
+   判断用户的参数
+     按照测试对象来划分，条件测试语句可分为四种：文件测试语句，逻辑测试语句，整数值比较语句
+	 字符串比较语句
+	 测试语句格式[条件表达式]
+	 1.文件测试即使用指定条件来判断文件是否存在或者权限是否满足等情况的运算符参数如下：
+	 -d 测试文件是否为目录类型
+	 -e 是否存在
+	 -f 是否为一般文件
+	 -w 当前用户是否有权限读取
+	 -r 当前用户是否有权限写入
+	 -x 当前用户是否有权限执行
+	 例如：使用文件测试语句测试/etc/fstab是否为一个目录文件。然后通过Shell解释器的内设变量
+	 $?显示上一条命令执行的返回值返回值为0.存在。非零，不存在
+	 [ -d /etc/fstab ]    //z注意空格
+	 echo $?
+	 1
+	 [ -f /etc/fstab ]
+	 echo $?
+	 0
+     2.逻辑语句
+      用于对测试结果进行逻辑分析，根据测试结果可实现不同的结果
+      逻辑与(&&)前面的命令执行成功后才会执行后门的命令
+      [-e /dev/cdrom]&&echo "Exist"
+	  逻辑或(||)前面的命令执行失败后才会执行后门的命令
+	  逻辑非(!),表示把条件测试中的判断取反
+	  [ !$USER=root ]&&echo "user"||echo "root"  //当前用户是非为非root用户，条件成立输出user，
+	  条件不成立或运算，输出root
+	 3.整数比较运算符
+	   整数比较运算符仅是对数字的操作，不能将数字与字符串、文件等内容一起操作
+	   -eq(是否等于，equal)
+	   -ne(是否不等于)
+	   -gt(是否大于,greater than)
+	   -lt(是否小于,less than)
+	   -ge(是否大于或等于)
+	   -le(是否小于或等于)
+	   例如：
+	   [ 10 -gt 10 ]
+	   echo #?
+	   1
+	   [ 10 -eq 10 ]
+	   echo #?
+	   0
+	 4.字符串比较语句用于判断测试字符串是否为空，或两个字符是否相等
+	    =(比较字符串内容是否相同)
+		!=(比较字符串内容是否不同)
+		-z(判断字符内容是否为空)
+		例如：
+		echo $LONG
+		en.US.UTF-8
+		[ $LONG!="en.US" ]&&echo "Not en.US"
+		Not en.US
+流程控制语句
+      1.if条件测试语句
+	    if语句分为单分支结构、双分支结构和多分支结构
+		单分支结构由if,then,fi关键字组成，只有条件成立，才会执行预设命令
+		if 条件测试操作         if 目录不存在
+		  then 命令序列            then 创建目录
+		fi                      fi
+		下面是一个Shell文件
+		#!/bin/bash
+		DIR="/media/cdrom"
+		if [ ! -e $DIR ]
+		  then mkdir -p /media/cdrom
+		fi
+		双分支结构由if,then,else,fi关键字组成，条件成立，执行匹配预设命令，反之执行不匹配命令
+		if 条件测试操作         if 如果能ping通
+		  then 命令序列1           then 提示服务器正常工作
+		  else 命令序列2           else 报警服务器出现问题
+		fi                      fi
+        if条件语句的多分支结构由if、then、else、elif、fi关键词组成，
+        read是用来读取用户输入信息的命令,能够把接受到的用户信息赋值给后面指定的变量
+        -p参数用于向用户显示一定的提示信息		
+	  2.for条件循环语句
+	    id 用户名 //查看id的信息
+		/dev/null被称为linux黑洞文件,把输出文件重定向到这个文件等于删除文件
+		/etc/passwd用来保存用户账户信息
+	    for 变量名 in 取值列表
+	    do
+		   命令序列
+		done
+		例如：
+		#!/bin/bash
+		read -p "Enter The users passwd:" PASSWD
+		for UNAME in one two andy
+		do 
+		id $UNAME &> /dev/null
+		if [ $? -eq 0 ]
+		then 
+		echo "exists"
+		else
+		useradd $UNAME &> /dev/null
+		echo "$PASSWD" | passwd --stdin $UNAME &> /dev/null
+		if [ $? -eq 0 ]
+		then 
+		echo "$UNAME creat success"
+		else
+		echo "$UNAME creat fail"
+		fi
+		fi
+		done
+	  3.while条件循环语句
+	    while 条件测试操作
+		do
+		   命令序列
+		done
+	  4.case条件测试语句  //只匹配一次
+	    case 变量值 in
+		模式1）
+		    命令序列
+			;;
+		模式2)
+		    命令序列
+			;;		
+        esac			
+	    
+		case语句默认不用beak，break用于循环
+		shell中内置的$#  $1的值不是不可变的，可以被shift指令改变
+		shift类似于左移运算符，把shell程序的传参移出去一个，$#少1，$1变成$2
+计划任务服务程序
+    一次性计划任务和周期性计划任务
+	一次性计划只执行一次:at 时间   //实现功能
+	                     at -l 显示设置好未执行的计划
+						 atrm 任务序号 //删除
+	例如:
+	at 23:30
+	at> echo "123"
+	at> ...
+	ctrl+D结束
+	周期性执行具体任务
+	crontab -e //创建编辑计划任务
+	crontab -l //查看
+	crontab -r //删除
+	crontab -u //管理员编辑他人的计划任务
+	
+      	  
+	
+	 
+   
+   
+   
+

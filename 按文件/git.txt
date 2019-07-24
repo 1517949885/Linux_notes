@@ -1,0 +1,98 @@
+1.git的安装和简单使用说明 
+   ①在Windows下的安装、配置和使用
+      安装，打开Git Bash
+	  在命令行输入
+	  git config --global user.name "Your Name"
+      git config --global user.email "email@example.com"
+	  创建一个版本库(建立一个空白目录)
+	  ① mkdir learngit
+	     cd learngit
+	  ② 将这个目录变成Git可管理的仓库
+	     git init
+	  注:不能再Windows下的记事本编辑任何文本文件，可以使用Notepad++
+	  ③编写一个文件(一定要放在learngit目录或者子目录下)
+	    添加文件 git add 文件名
+		提交     git commit –m”修改内容说明”
+		
+		掌握仓库的当前状态:git status
+		git diff //查看未提交的修改，即当前文件与 已commit过的文件的区别
+        提交修改和提交新文件是一样的两步：
+	    添加文件 git add 文件名
+		提交     git commit –m”修改内容说明”
+		git log //查看改动，版本号，时间，说明等(从最近到最远)
+		如果先输出的信息太多，可以加上--pretty=oneline参数
+		git log --pretty=oneline
+	  ④版本回退
+	    git reset --hard HEAD^  上一个版本  上上个版本 HEAD^^  上一百个版本 HEAD~100
+		
+		git reset --hard 1094a  返回未被还原的版本  1094a 是commit id的前几位
+		
+		git reflog   查看历史命令
+		
+		learngit就是工作区，.git为版本库
+		
+		git checkout -- file  撤销修改，让这个文件回到最近一次git commit或git add时的状态(丢弃工作区的修改)
+		
+		git add  会将文件添加到暂存区
+		git reset HEAD <file>可以把暂存区的修改撤销掉，重新放回工作区
+		
+		//rm 文件    删除文件
+		git rm 文件 （从版本库删除）
+		git commit -m ""
+		
+		
+2.注册GitHub
+      本地Git仓库和GitHub仓库之间的传输是通过SSH加密的
+	  ①创建 SSH Key
+	   ssh-keygen -t rsa -C "youremail@example.com"
+	   如果一切顺利的话，可以在用户主目录里找到.ssh目录，里面有id_rsa和id_rsa.pub两个
+	   文件，这两个就是SSH Key的秘钥对，id_rsa是私钥，不能泄露出去，id_rsa.pub是公钥，
+	   可以放心地告诉任何人
+	  ②登陆GitHub，打开“Account settings”，“SSH Keys”页面：
+       然后，点“Add SSH Key”，填上任意Title，在Key文本框里粘贴id_rsa.pub文件的内容：
+3.
+    git remote add origin git@github.com:michaelliao/learngit.git(关联远程库，在需要
+	关联的本地库初始化后，关联)
+	git remote add origin git@github.com/sinoagg/SA6101_Code.git
+	git push -u origin master  第一次推送到远程库
+	git push origin master  推送到远程库
+	
+	git clone git@github.com:michaelliao/gitskills.git 从github克隆一个本地库
+	
+	
+	  
+4.
+  在提交的文件夹
+  git init
+  git add -A
+  git commit –m ”修改内容说明”
+  git remote add origin git@github.com:sinoagg/SA6101_Code.git //关联远程库
+  git checkout -b liuhaohao  //我们创建分支
+  git checkout master  //切换主分支
+  git push origin LHH
+5.分支管理
+  git checkout -b dev  //创建分支并切换
+  相当于
+  git branch dev
+  git checkout dev
+  
+  git branch  //查看当前分支
+  然后提交
+  git add xxx
+  git commit -m "xx"
+  切回主分支 git checkout master
+  git merge命令用于合并指定分支到当前分支
+  git merge dev
+  删除分支
+  git branch -d dev
+  
+  
+  团队协作:
+  指定本地dev分支与远程origin/dev分支的链接，根据提示，设置dev和origin/dev的链接
+  it branch --set-upstream-to=origin/dev dev
+  然后git pull
+  
+   
+  
+  
+  

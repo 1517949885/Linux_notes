@@ -1,0 +1,12 @@
+1.安装VMware Tools
+  1.虚拟机->重新安装VMware Tools
+    mkdir -p /mnt/cdrom
+	mount /dev/cdrom /mnt/cdrom
+	cd /mnt/cdrom
+	cp VMwareTools-7.8.4-126130.tar.gz /tmp  //拷贝到临时文件tmp
+    cd /tmp
+	tar zxvf xxxxxxxxxxxx.tar.gz
+	cd vmware-tools-distrib/
+	./vmware-install.pl -d   // -d表示默认安装
+	reboot
+2.配置yum

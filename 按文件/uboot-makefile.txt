@@ -1,0 +1,15 @@
+顶层Makefile	从总体上控制着u-boot的编译、连接，定义总目标u-boot.bin
+顶层config.mk	规定了编译的规则，被所有Makefile所调用
+顶层rules.mk	生成依赖关系，被各级子目录Makefile所调用
+各级子目录Makefile	决定当前目录的编译、连接
+顶层mkconfig	在编译之前运行，为编译做准备
+mkconfig(shell脚本)是在编译之前做一些准备，笔者认为可以不算做Makefile集体中的一部分。
+u-boot编译过程中生成的与编译相关的文件
+include/config.mk，mkconfig所生成，被顶层Makefile所包含，定义ARCH、CPU等全局变量
+
+
+在执行make all之前，首先要执行make *_config例如make smdk2410_config，通过执行mkconfig脚本，
+可以确定所用cpu的架构（ARCH）例如arm ，cpu的种类（CPU）例如arm920t，开发板（BOARD）例如
+smdk2410 ，soc（SOC）例如 s3c24x0，这些信息保存在mkconfig脚本生成的makefile包含文件include/config.mk中。
+include/config.mk会被包含进入顶层makefile中，根据这个文件所定义的变量值，从而确定用那些文件（依赖），
+例如lib_arm/，board/smdk2410，cpu/arm920t等等。这是一种大方向上的裁剪方式。

@@ -1,0 +1,180 @@
+1.为什么要有uboot
+   1.计算机系统的主要部件
+     计算机系统就是由CPU来做核心进行运行的系统。典型的计算机系统有:PC机、嵌入式
+	设备(手机，平板电脑，游戏机)、单片机(家用电器)
+    计算机运行时需要的主要核心部件是:CPU、RAM/DDR、ROM(存储器flash/硬盘)
+   2.PC机的启动过程
+      (1)典型的PC机的部署，BIOS程序部署在PC机主板上(出厂时预制)，操作系统部署在
+	  硬盘，内存在掉电时无作用，CPU在掉电时不工作
+	  (2)启动过程:PC机上电后先执行BOIS程序(NorFlah),BIOS负责初始化DDR内存，硬盘
+	  ，然后从硬盘将OS读到DDR，然后跳转到DDR执行OS直到启动(OS启动后BIOS就没有了)
+   3.典型的嵌入式Linux系统启动过程
+      (1)uboot程序部署在flash上(能作为启动设备),os部署在flash(iNand/Nand)
+	  (2)启动过程:上电后先执行uboot，uboot负责初始化内存和Flash，从flash中读取
+	  OS到DDR，跳到DDR执行OS
+   4.uboot主要作用用来启动操作系统的内核
+2.为什么是uboot
+   1.uboot是SourceForge上的开源项目
+     uboot的作者是一个德国人
+	 uboot是一个人发起，然后整个网络上所有感兴趣的人共同维护发展而来的一个
+	 bootloader
+   2.uboot的发展过程
+     自己使用的小开源项目
+     被更多人认可使用
+	 被Soc厂商默认支持
+   3.版本
+     早期uboot版本是uboot1.3.4
+	 后来版本号编程uboot-2010.06
+   4.uboot出现是一种必然
+3.uboot(本质是一个裸机程序)必须解决哪些问题
+   1.自身开机可以直接启动，必须根据具体的Soc启动设计来设计uboot(SD卡，iNand等)
+   2.uboot必须进行和硬件相对应的代码的更改和移植，uboot的第一阶段的start.S
+   文件中处理
+   4.uboot实现了一部分硬件控制能力，为了完成一些任务必须让硬件工作(比如串口，lcd等)
+   5.uboot的生命周期，一旦uboot结束运行，不会跳回uboot
+   。。。。。。等等
+4.uboot的工作方式
+   1.从裸机程序镜像uboot.bin说起
+      (1)uboot的本质是一个裸机程序，一般uboot在180k-440k左右
+	  (2)本身是一个开源项目，由若干个.c和.h文件组成，配置编译之后生成一个
+	  uboot.bin文件，这就是uboot这个裸机程序的镜像，镜像烧录到启动介质给Soc
+	  启动
+	  (3)uboot被运行后被加载到内存中拿给CPU运行
+   2.uboot命令式shell界面
+      有些程序需要和人进行交互，于是乎程序中就实现了一个shell，uboot就实现了
+	  一个shell
+	  注意:shell并不是操作系统专利。linux中打开一个终端后得到一个shell，可以
+	  输入命令，uboot的shell和终端的shell一样，只是命令集不同
+   3.关键点:命令和环境变量
+      uboot启动大部分时间和工作在shell下完成的
+	  命令就是uboot的shell中可识别的各种命令，uboot有几十个命令，我们还可以
+	  自己给uboot添加命令
+	  uboot的环境变量和操作系统的环境变量工作原理几乎相同。
+	  环境变量可以被认为是系统的全局变量
+      系统或者我们程序在运行时可以通过读取环境变量来指导程序的运行
+	  在uboot的shell下输入print可以打印环境变量
+	  改变环境变量:set bootdelay 10      save
+5.uboot的常用命令
+    ①有些命令有简化的别名
+	print/printenv       
+	set/setenv
+	②有些命令带参数
+	有些必须带参数，有些带可选参数
+	例如:set/setenv    set name value
+	③命令中的特殊符号
+	uboot有些命令的带的参数非常的长并且中间有空格，可以用单引号引起来表示一个参数
+	④命令族
+	例如movi
+	命令关键字一样，参数不一样，功能不一样
+	⑤命令
+	   printenv/print  打印出系统中所以的环境变量(环境变量会被存储，保存后下次开机改变)
+	   setenv/set    设置(添加/更改)环境变量 格式set name value  set name  删除
+	   saveenv/save   将内存中环境变量值保存到flash(掉电还保存)
+	   ping    网络测试指令    格式:ping ip地址   //要ping的地址，插上网线，测试开发板与主机之间
+	   的网络连接。先ping通windows，设置主机的本地连接（IPV4）。注意查看uboot下的环境变量ipaddr。
+	   这个是开发板的当前地址。必须和windows的ip在同一个网段(ip地址分为网段地址和主机地址，前三个
+	   是网段地址)，如果ping不通，可以设置一下变量gatewayip。
+	   开发板运行linux下ping通Windows
+	   使用ifconfig命令设置ip地址
+	   Windows下ping开发板运行linux或者uboot
+	   虚拟机和开发板通信只能设置成桥接方式，并且设置为有线网卡
+	   //uboot为了部署内核就需要将内核镜像从主机下再到本地flash。主流方式有fastboot
+	   //和tftp。fastboot是通过USB线进行数据传输，tftp是通过有线网络传输(必须将uboot下环境变量serveip
+	   设置为主机地址)
+	   tftp下载方式，uboot扮演tftp客户端的角色，主机Windows或者ubuntu必须有一个tftp服务器，将
+       要下载的镜像文件放在服务器的下载目录，使用tftp命令下载即可。搭建tftp服务器可以用tftpd32(Windows)
+       linux下搭建参考文件
+       tftp  地址   文件  //将tftp服务器的文件下载到开发板内存位 
+       nfs	   
+	⑥开发板与主机的ping通
+	  开发板linux下和主机Windows的ping
+	  开发板uboot下和主机Windows的ping
+	  开发板linux下和虚拟机ubuntu的ping
+	  (1)在linux基础课中讲过：虚拟机的网卡设置可以选择好几种方式，常用的就是NAT和桥接（bridged）。
+      (2)虚拟机要和开发板进行网络通信，只能通过桥接方式连接。
+      (3)虚拟机要想被开发板ping通，设置步骤如下：
+       第一步：虚拟机设置成桥接方式。
+       第二步：虚拟机的菜单中有个“虚拟网络编辑器”，这里面要设置为桥接到有线网卡。（默认是自动的，
+	   自动的一般会影响ping通。因为电脑现在一般都有2个网卡：一个有线的一个无线的。如果选了自动，
+	   那么虚拟机会自动桥接到无线网卡上，但是我们却是通过有线网卡来连接开发板的，自然ping不通）
+       第三步：在虚拟机ubuntu中设置IP地址为192.168.1.141（可以通过/etc/network/interfaces文件来
+	   设置静态的然后重启；也可以直接命令行ifconfig去设置）
+	   开发板uboot下和虚拟机ubuntu的ping
+	  1.设置Windows本地连接和开发版的IP地址在同一网段，主机地址不一样，用网线连接开发板和主机、
+	  ⑦命令2
+	  flash的操作指令movi
+	  开发板如果用SD卡/EMMC/iNand作为flash，则在uboot操作flash的指令为movi(mmc)
+	  movi是个命令集，有很多子指令
+	  :movi read用来读取iNand到DDR,movi write将DDR的内容写到iNand
+	  movi read {u-boot|kernel}   {addr}
+	  NorFlah操作指令nand
+	  内存操作指令:mm mw md
+	  内存没有分区(硬盘有分区)
+	  md //memory display
+	  md [.b,.w,.l]  adress  [数量]
+	  例如  md.b 30000000 10   //16个字节
+	  mw //memory write
+	  mw [.b,.w,.l]  adress  内容
+	  mm //memory modify   写内存(地址逐个增加，y结束)
+	  启动内核指令:bootm  go
+	  bootm 传参
+	  go 不传参
+6.常用的环境变量
+      uboot环境变量在flash，uboot启动时，一次性将环境变量读到DDR中，使用中用的DDR，save命令可以
+	  将环境变量写到flash，掉电保存。
+	  自动运行倒数时间：bootdelay
+      网络设置：ipaddr serverip 
+      (1)ipaddr是开发板的本地IP地址
+      (2)serverip是开发板通过tftp指令去tftp服务器下载东西时，tftp服务器的IP地址。
+      (3)gatewayip是开发板的本地网关地址
+      (4)netmask是子网掩码
+      (5)ethaddr是开发板的本地网卡的MAC地址。
+	  自动运行命令设置：bootcmd
+     (1)uboot启动后会开机自动倒数bootdelay秒，如果没有人按下回车打断启动，则uboot会自动执行启动命令
+	 来启动内核。
+     (2)uboot开机自动启动时实际就是在内部执行了bootcmd这个环境变量的值所对应的命令集。
+     (3)bootcmd=movi read kernel 30008000; bootm 30008000   意思是：将iNand的kernel分区读取到DDR内
+	 存的0x30008000地址处，然后使用bootm启动命令从内存0x30008000处去启动内核。
+     (4)set bootcmd printenv，然后saveenv；然后重启则会看到启动倒数后自动执行printenv命令打印出环境
+	 变量。这个小实验说明开机自动执行了bootcmd。
+     (5)set bootcmd 'movi read kernel 30008000; bootm 30008000'
+      uboot给kernel传参：bootargs
+      (1)linux内核启动时可以接收uboot给他传递的启动参数，这些启动参数是uboot和内核约定好的形式、
+	  内容，linux内核在这些启动参数的指导下完成启动过程。这样的设计是为了灵活，为了内核在不重新编译
+	  的情况下可以用不同的方式启动。
+      (2)我们要做的事情就是：在uboot的环境变量中设置bootargs，然后bootm命令启动内核时会自动将bootargs
+	  传给内核。
+      (3)bootargs=console=ttySAC2,115200 root=/dev/mmcblk0p2 rw init=/linuxrc rootfstype=ext3			
+	  意义解释：
+      console=ttySAC2,115200	控制台使用串口2，波特率115200.
+      root=/dev/mmcblk0p2	rw	根文件系统在SD卡端口0设备（iNand）第2分区，根文件系统是可读可写的
+      init=/linuxrc			linux的进程1（init进程）的路径
+      rootfstype=ext3			根文件系统的类型是ext3
+      (4)内核传参非常重要。在内核移植的时候，新手经常因为忘记给内核传参，或者给内核传递的参数不对，
+	  造成内核启动不起来。
+      新建、更改、删除一个环境变量的方法
+      (1)新建一个环境变量，使用set var value
+      (2)更改一个环境变量，使用set var value
+      (3)删除一个环境变量，使用set var
+7.uboot中对flash和DDR的管理
+      uboot对flash的分区
+	  flash(4G):uboot  
+	            uboot的环境变量
+			    kernel
+			    rootfs  根文件系统
+	  分区方法不固定，但是在设计系统移植时定好
+	  uboot，必须从flash起始地址开始(也许是扇区0，也许是1，取决于Soc启动设置)，一般为
+	  512k，1M
+	  环境变量：一般32k
+	  kernel:一般为3M
+	  rootfs：
+	  在uboot和kernel中使用同一个分区表
+	  DDR的分区
+	  主要在linux内核还没有启动前分区，启动后就由内存管理模块接管
+	  
+	  
+	  
+	   
+	
+	  
+      

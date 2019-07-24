@@ -1,0 +1,107 @@
+1.start_armboot在uboot/lib_arm/board.c中，是c文件，这个函数是uboot的第二阶段
+   444-908行
+   uboot的第二阶段应该做什么
+   初始化剩下的还没有被初始化的硬件,主要是SoC外部硬件(譬如iNand,网卡等)，uboot本身的
+   东西(uboot的命令，环境变量等 )，初始完后进入uboot命令行准备接受命令
+   第二阶段的结束:uboot不断初始化，打印出很多启动信息，然后进入bootdelay秒倒计时，然后执行bootcmd变量
+   对应的命令。在bootdelay秒倒计时可以按回车打断uboot进入命令行。
+2.start_armboot函数的解析1
+   ①定义局部变量
+     typedef int (init_fnc_t) (void)； 是一个函数类型
+	 init_fnc_t **init_fnc_ptr;//init_fnc_ptr是一个二重函数指针，二重指针的作用有
+	 两个，一个是用来指向一重指针，一个是用来指向函数指针数组。
+	 70行 DECLARE_GLOBAL_DATA_PTR
+	 #define DECLARE_GLOBAL_DATA_PTR     register volatile gd_t *gd asm ("r8")
+	 定义了一盒全局变量名字叫做gd,这个全局变量是一个指针类型，占四个字节，用volatile
+	 修饰表示他是可变的，用register修饰表示这个变量尽量放到寄存器，asm(r8)是gcc支持
+	 的一种语法，意思是把gd放到寄存器r8。意思是，定义一个放到寄存器r8的全局变量，名字
+	 叫gd，类型是指向gd_t类型变量的指针。
+	 因为全局变量gd(gloal data的简称)，是uboot的一个全局变量(这个变量是一个结构体，
+	 里面有很多内容，加起来有成的就是uboot常用的全局变量)，gd常被访问，放在register
+	 中提升运行效率(和功能无关，并不是必须的)。gd_t定义在Include/asm-arm/global_data.h
+	 bd_t类型的指针比较重要，里面是硬件相关的参数，比如:波特率，IP地址，机器码，DDR内存
+	 分配等
+   ②内存使用排布   481行前
+     gd只是定义了一个指针变量，只占四个字节，我们在使用gd前需要分配内存
+	 裸机程序没有malloc管理器，无法调用，大片的DDR内存散放着可以随意使用，但是后续很多操作还需要很多
+	 连着的内存块
+	 gd在DDR中内存分配的起始地址
+	 gd_base = CFG_UBOOT_BASE + CFG_UBOOT_SIZE - CFG_MALLOC_LEN - CFG_STACK_SIZE - sizeof(gd_t);
+	 uboot的起始地址(0x33e00000)+2M(uboot大小大概是200k)-堆区大小-栈区大小-gd_t指针的大小(36)。
+	 gd->bd = (bd_t*)((char*)gd - sizeof(bd_t));
+	 注意:这里将gd强制转化成char *,这样gd-sizeof(bd_t)*sizeof(char)
+	 uboot区:CFG_UBOOT_BASE---CFG_UBOOT_BASE+xx(uboot实际大小)
+	 堆区:CFG_MALLOC_LEN   16k+896k=912k
+	 栈区:CFG_STACK_SIZE   512K
+   ③for循环执行init_sequence
+	 init_sequence是一个函数指针数组，数组中存储了很多函数指针，这些指针指向的函数都是
+	 init_fnc_t类型(参数是void，返回值是int)。init_sequence在定义就同事给了初始化，初始化的函数指针都是函数名，
+	 (函数名的实质就是函数指针，是一个地址)
+	 for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) 
+	 {
+		if ((*init_fnc_ptr)() != 0) 返回不是0挂起
+		{
+			hang ();
+		}
+	 }
+	 init_sequence是board级别的各种硬件初始化
+	 cpu_init()   CPU内部初始化，为空
+	 board_init()  在board/samsung/x210/x210.c中，是x210开发板的初始化
+	 网卡初始化  dm9000_pre_init();  dm9000网卡的初始化。需要的的话只需要还硬件的配置，驱动不需要修改。
+	 DDR的初始化  这里的初始化DDR和汇编阶段lowlevel_init初始化DDR是不一样的，当时是硬件初始化，可以让
+	 DDR开始工作，这里是软件的初始化(属性设置，地址设置的初始化，程序员自己在x210_sd.h的宏定义去配置
+	 DDR内存信息496-501行(几片内存，每片内存的起始地址和大小))
+	 
+	 gd->bd->bi_arch_number = MACH_TYPE;  在x210_sd.h定义，值是2456
+	 bi_arch_number是开发板的机器码，uboot给开发板定义的唯一编码，主要作用是uboot和linux内核之间进行适配。
+	 机器码对上才启动。
+	 gd->bd->bi_boot_params = (PHYS_SDRAM_1+0x100);  0x30000100
+	 uboot给linux kernel启动是传参的地址(uboot把需要传递的参数放在一块内存)
+	 interrupt_init() //初始化定时器，tim4
+	 5个PWM定时器，0-3可以输出波形(没有引脚)，4不能输出，作为计时器，做计时是需要用到两个寄存器
+	 TCNB4(需要计多少数)，TCNTO4(标志，使能什么的)，没有中断，只能使用查询。典型的就是bootdelay.
+	 在这里设置定时10ms
+	 env_init()  //环境变量相关的初始化
+	 根据开发板的存储介质找，我们用的iNand(env_movi.c)
+	 对内存里维护的那一份uboot的env做了基础的初始化和判定，因为我们还没有进行环境变量从SD卡到DDR的重定位
+	 所以还不用，在start_armboot在776行重定位
+	 init_baudrate()  //初始化串口通信的波特率，getenv_r()是读取环境变量的值
+	 getenv_r ("baudrate", tmp, sizeof (tmp));
+	 gd->bd->bi_baudrate = gd->baudrate = (i > 0)  //返回成功继续用
+			? (int) simple_strtoul (tmp, NULL, 10)   //字符串转换成数字
+			: CONFIG_BAUDRATE;     //失败用这个
+	 serial_init()  // 初始化串口，在BL1用汇编初始化过了，这里什么都没有做
+	 console_init_f() //控制台第一阶段的初始化，后面加f表示第一阶段初始化，r表示第二阶段初始化。
+	 console_init_r()在start_armboot的826行
+	 gd->have_console = 1;  仅仅做了这一件事
+	 display_banner()   
+	 串口输出显示uboot的logo
+	 printf ("\n\n%s\n\n", version_string);
+	 printf-->puts()-->控制台初始化(使用fputs())/控制台未初始化(使用serial_puts()操作串口寄存器发送)
+	 控制台是一个用软件虚拟出来的设备，这个设备有一套专业的通信函数(发送，接受...),控制台的通信函数
+	 最终会映射到硬件的通信函数来实现，因此没有本质差别。
+	 但是在别的体系，控制台的通信函数到硬件的通信函数之间用软件做了一些优化，譬如缓冲。
+	 print_cpuinfo()//打印cpu的信息，一些时钟信息
+	 checkboard()   //检查开发板
+	 printf("\nBoard:   X210\n");
+	 init_func_i2c()  //没有被执行，想要开启配置x210_sd.h内相应的宏即可
+	 验证:
+	 1.修改Makefile中的版本号代码。(先清除make disclean,再 make x210_sd_config)
+	   使用脚本烧写，进入sd_fusing,然后make clean,然后执行./sd_fusing.sh /dev/sdb
+	   （连接SD卡到ubuntu(在虚拟机选项中断开主机连接),查看负载，ls /dev/sd*)
+	 dram_init()  DDR的初始化，给gd->bd的一些相关的全局变量初始化。记录DDR的配置信息
+	 在x210_sd.h中配置。
+	 display_dram_config()  打印出了内存大小
+	 在uboot有个命令式bdinfo，打印出gd->bd记录的所有硬件相关的全局变量。
+   ④
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 

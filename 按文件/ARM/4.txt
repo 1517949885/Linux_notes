@@ -1,0 +1,121 @@
+﻿1.USB启动配合dnw工具下载
+   USB启动需要把COM5打到VCC
+   先破解，再长按开机安装驱动，dnw的显示为USB:OK安装成功
+   dnw工具的USB地址一定要配置为0xd0020010(IRAM中，BL1)(option中)，不需要16字节的校验头
+2.SD卡下载
+   1.把OM5打开GND
+   2.先吧iNand中的uboot破坏掉，才能从SD卡启动
+   在系统中输入
+   busybox dd if=/dev/zero of=/dev/block/mmcblk0 bs=512 seek=1 count=1 conv=sync
+   为了确保执行数据有效，再执行sync同步一下，即可破坏掉前一个块的数据
+   或者在uboot输入
+   movi write u-boot 0x30000000(把内存0X3000000的数写入到u-boot),将DDR的数写入内存
+   movi read     //将内存的数读到DDR
+   3.在windows下制作启动SD卡
+   刷卡工具在A盘的tools\x210_Fusing_Tool，然后选择SD卡，烧录
+   4.在linux下制作SD卡
+   后面章节
+3.手动安装交叉编译工具链
+   linux下安装软件的特点
+   1.在线安装
+   在ubuntu中使用apt-get install 软件名
+   自己下载安装包安装
+   源代码安装
+   2.安装交叉编译工具链
+   采用第二种方法
+     1.将windows下的交叉编译工具链弄到linux下，可以用共享文件夹的方式
+	 2.切换到/usr/local/arm目录，执行cp /mnt/hgfs/ubuntu_share/arm-2009q3.tar.bz2 ./
+	 解压tar jxvf arm-2009q3.tar.bz2
+	 3.arm-2009q3内即为应用程序
+	 4.测试在/usr/local/arm/arm-2009q3/bin目录下执行./arm-none-linux-gnueabi-gcc -v
+	 若64位和32位不兼容，先执行apt-get install lib32ncurses5 lib32z1
+	 注意:一般/bin目录放置系统自带的用户常用的应用程序，/sbin目录下放置的是系统自带的系统管理
+	 的应用程序，我们一般装软件在/usr，在/usr/local/创建一个arm文件夹，装到里面
+   3.环境变量的意义
+     环境变量是操作系统的全局变量，每一个环境变量对操作系统都是唯一的
+	 有一部分是系统自带的，另一部分是自己制定的
+	 PATH:系统自带的，含义是系统在查找可执行程序是搜索的路径范围
+	 如果安装的应用程序执行搜索不到(例如安装的arm-none-linux-gnueabi-gcc)，可自己添加路径
+	 export PATH=/usr/local/arm/arm-2009q3/bin:$PATH
+	 在一个终端中执行以上命令只是在这个终端路径改变
+	 解决办法：
+	 在宿主目录，/root/.bashrc添加export PATH=/usr/local/arm/arm-2009q3/bin:$PATH
+	 打开终端会自动执行/root/.bashrc
+	 或者在/etc/environment文件修改
+	 1.创建一个符号链接
+	   在当前目录
+	   ln arm-none-linux-gnueabi-gcc -s arm-linux-gcc
+	   可以建立一个脚本吧所有的应用吃创建符号链接
+4.Makefile
+    1.Makefile是用来管理工程的
+	  在正式项目有很多.c  .h文件，执行gcc xx.c -o xx很麻烦
+	  建立一个Makefile文件
+	  all：
+		gcc xx.c -o xx
+	  //前面是tab键
+	  执行make即可，然后执行生成的文件
+	2.Makefile的一些基本概念
+	  目标:目标顶格写，后面是冒号(冒号后面是依赖)
+	  依赖:用来产生目标的原材料
+	  命令:命令前面是TAB，执行
+	  exe:a.c b.c
+		gcc a.c b.c -o exe
+	  clean:
+		rm exe
+	  make exe  执行gcc a.c b.c -o exe
+	  make clean 执行rm exe
+	  直接执行make和执行make 第一个目标一样的
+5.mkv210.image.c详解
+    裸机程序的Makefile把程序的编译和链接过程是分开的，平时我们执行的命令(gcc xx.c -o xx)是
+	将编译和链接一步完成的。
+	编译使用编译器gcc，链接使用连接器ld。链接器得到led.elf其实就是我们的可执行程序，（如果是
+	在操作系统下，这个led.elf就可以执行了）但是在嵌入式裸机中我们需要的是可以烧写的文件（可烧
+	写的文件就叫镜像image），因此我们需要用这个led.elf为原材料来制作镜像，制作工具是交叉编译
+	工具链中的arm-linux-objcopy，我们使用arm-linux-objdump工具进行反编译（反汇编），反汇编其
+	实就是把编译后的elf格式的可执行程序给反过来的到对应的汇编程序，的到它的汇编源代码。我们
+	使用反汇编主要是用来学习，见本部分最后一节
+	mkv210_image.c最终不是在开发板上执行的，而是在linux中执行的，因此编译这个程序用gcc而不是用
+	arm-linux-gcc，编译得到可执行程序mkmini210，目的是通过执行这个程序由led.bin得到210.bin
+	USB不需要头校验，SD卡需要头校验。210.bin就是头校验。
+	因此mkv210_image.c的作用就是为了给BL1添加校验头
+	①main函数的两个形参的作用
+	两个形参:argc和argv
+	argc是用户(通过命令行来)执行这个程序时，实际传递的参数个数，注意这个参数个数包含程序执行本身
+	argv是字符串数组，数组中存储的是字符串是一个个的传参
+	例如:./mkmini210 led.bin 210.bin
+	argc=3   argv[0]="/mkmini210"  argv[1]=led.bin  argv[2]=210.bin
+6.点亮LED灯
+    硬件原理:省略
+	GPIO:通用输入输出 (可以编程控制它的电压高低)
+    GPJ0CON, （GPJ0 control）GPJ0控制寄存器，用来配置各引脚的工作模式	
+	GPJ0DAT, （GPJ0 data）当引脚配置为input/output模式时，寄存器的相应位和引脚的电平高低相对应。
+	GPJ0PUD, （pull up down）控制引脚内部弱上拉、下拉
+	GPJ0DRV, （driver）配置GPIO引脚的驱动能力
+	GPJ0CONPDN，（记得是低功耗模式下的控制寄存器）
+	GPJ0PUDPDN  （记得是低功耗模式下的上下拉寄存器）
+	注：在驱动LED点亮时，应该将GPIO配置为output模式。
+7.编写LED的驱动
+    死循环：
+	flag:
+		b flag
+	b .
+	用.global _start //将_start链接属性改为外部，这样其他文件就可以看到它了
+	
+	延时函数的编写
+	delay:
+		ldr r2,=10000
+    delay_loop:
+		cmp r2, #0
+		sub r2, r2, #1   //r2=r2-1
+		bne delay_loop   //不等于执行
+		mov pc, lr       //跳回去
+8.反汇编工具objump的使用简介
+    arm-linux-objdump -D led.elf > led_elf.dis
+	objdump是gcc编译工具链的反汇编工具，作用是有编译链接好的elf格式可执行程序反过来得到汇编源代码
+    -D表示法汇编     >左边是elf格式可执行程序，右面是得到的反汇编程序
+    汇编文件：.S文件
+    反汇编:.DIS文件
+    arm-linux-ld -Ttext 0x0 -o led.elf $^
+    反汇编指令地址是由链接指定的。上示开始地址为0	
+	
+   

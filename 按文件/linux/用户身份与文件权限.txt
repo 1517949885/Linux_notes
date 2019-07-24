@@ -1,0 +1,39 @@
+1.用户身份与能力
+  用户:
+    管理员UID:0
+	系统用户UID:1~999
+	普通用户UID:1000起
+  用户组:
+    GID
+	useradd：用于创建新的用户， useradd [选项] 用户名
+	-d 指定用户家目录，默认为/homr/username
+	-g 指定一个初始的用户组(必须已经存在)
+	-u 指定该用户默认的UID
+	-s 指定该用户默认Shell解释器
+	-G 指定一个或多个扩展用户组
+	groupadd:创建用户组  groupadd [选项] 群组名
+	usermod:修改用户属性  usermod [选项] 用户名
+	-d -m 参数 -m参数 -d连用，可重新指定户的家目录并自动把旧数据转移过去
+	-g 变更用户组
+	-u 变更用户的UID
+	-s 变更该用户默认Shell解释器
+	-G 变更扩展用户组
+	将用户 linuxprobe加入到 root用户组中，这样扩展列表则会出现
+	usermod -G root linuxprobe
+	passwd:用于修改用户密码，过期信息，认证信息等 passwd [选项] 用户名
+	--stdin 允许通过标准输入修改用户密码 echo "NewPassWord" | passwd --stdin Username
+	-l 锁定用户，禁止登陆
+	-u 解除锁定，允许用户登陆
+	userdel 用户的删除  userdel [选项] 用户名
+	-f 强制删除用户
+	-r 同时删除用户和用户家目录
+2.文件权限与归属
+    -  普通文件
+	d  目录文件
+	l  链接文件
+	b  块设备文件
+	c  字符设备文件
+	p
+	
+	
+	

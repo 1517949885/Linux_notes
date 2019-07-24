@@ -1,0 +1,67 @@
+1.开发板刷机系统
+    1.刷系统是利用刷机工具，向开发板中烧录预先编译好的系统镜像，使之在开发板运
+	行起来
+    2.串口输出的意义(做系统控制台，命令行就是控制台)
+	嵌入式设备一般用串口做控制台的，桌面电脑可以打开一个虚拟控制台
+	常用的串口监视软件:超级终端,SecureCRT,minicom
+	3.破坏iNand的bootloder以从SD2启动
+	linux下
+	busybox dd if=/dev/zero of=/dev/block/mmcblk0 bs=512 seek=1 count=1 conv=sync
+	为了确保执行数据有效，再执行sync同步一下，即可破坏掉前一个块的数据
+	uboot下
+	movi write u-boot 0x30000000
+	这句话的意思是说吧板载的iNand的第一个扇区用全0填充，就是擦除它，这样我们
+	板载iNand的bootloder的开始第一个扇区就被破坏了启动是iROM还是先从iNand里读取
+	16k，然后算校验和，因为被破坏，校验和不通过。启动失败，从SD2启动
+	破坏板载iNand的booroder,不插SD2，启动串口得到SD checksum Error
+    4.制作启动SD卡
+	一种是在windows中用刷卡工具去制作启动SD卡，另一种是在linux中用dd命令
+	第一种，刷卡工具在A盘的tools\x210_Fusing_Tool
+	5.fastboot介绍：
+	fastboot既是uboot中快速下载镜像的一个命令，也是windows上的一个软件
+	fastboot是通过USB进行数据传输。（需要装驱动，在uboot控制台输入fastboot命令,X210V3S_A\tools\USB驱动
+	\x210_android_driver）
+	fastboot软件的打开方法:
+	在windows下的控制台cmd，切换软件目录(d:)
+	fastboot常用命令
+	fastboot devices   用来查看当前连接设备
+	fastboot flash xxx(分区)  文件 //  用来烧录
+	fastboot reboot 重启命令
+	在cmd下使用下面三个命令烧录
+	将要烧录的镜像复制到fastboot
+	fastboot flash bootloader android4.0/uboot.bin   用来烧录uboot
+	fastboot flash kernel android4.0/zImage-android  烧录linux kerbnel
+	fastboot flash system android4.0/x210.img
+	烧录linux+QT
+	fastboot flash bootloader linuxQT/uboot.bin		烧uboot
+	fastboot flash kernel linuxQT/zImage-qt					烧linux kernel
+	fastboot flash system linuxQT/rootfs_qt4.ext3			烧rootfs
+	烧录android2.3
+	fastboot flash bootloader android2.3/uboot.bin		烧uboot
+	fastboot flash kernel android2.3/zImage				烧linux kernel
+	fastboot flash system android2.3/x210.img			烧android rom
+	android2.3中使用了串口0，所以启动后要把串口插到串口0中
+2.dnw刷机
+    用 fastboot 刷Android4.0：
+    用的镜像文件：	
+	   uboot.bin
+	   x210.img
+	   zImage-android
+	①：拨码OM5拨上去；如 [OM0：OM5]=[101101]。后面两位不管。
+    ②：按住开机键，DNW配置下载地址d0020010，USB下x210_usb.bin，
+    ③：DNW配置下载地址23e00000，USB下载uboot.bin
+    ④：这时串口终端有信息打印出来，回车进入命令行，这时可以松开 开机键，
+    ⑤：输入fdisk -c 0
+	输入fastboot
+	fastboot flash bootloader android4.0/uboot.bin   用来烧录uboot
+	fastboot flash kernel android4.0/zImage-android  烧录linux kerbrl
+	fastboot flash system android4.0/x210.img
+    ⑥：完了之后OM5拨回来，手动重启机器即可
+3.在linux下
+    一个设备只能在windows下或者linux下连接，想要在linux下连接则windows下就会断开，在虚拟机
+	目录下可移动设备可操作。
+	在linux系统中
+	ls /dev/sd*
+	一般多了sdb和sdb1，也有可能是别的
+	执行命令:./nand_fusing.sh /dev/sdb
+	

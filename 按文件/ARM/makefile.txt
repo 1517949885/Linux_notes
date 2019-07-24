@@ -1,0 +1,316 @@
+1.makefile定义了一系列的规则来指定，哪些文件需要先编译，哪些文件需要后编译，哪些文件需要
+重新编译，甚至于进行更复杂的功能操作，因为makefile就像一个Shell脚本一样，其中也可以执行
+操作系统的命令。。make是一个命令工具，是一个解释makefile中指令的命令工具，一般来说，大多
+数的IDE都有这个命令
+2.关于程序的编译和链接
+    无论是C还是C++，首先要把源文件编译成中间文件，在Windows中一般是.obj文件，在unix下是.o
+文件，这个动作是编译。然后把大量的Objiect file文件合成执行文件，这个动作叫做链接。
+源文件首先会生成中间目标文件，再由中间目标文件生成执行文件。在编译时，编译器只检测程序语法，
+和函数、变量是否被声明。如果函数未被声明，编译器会给出一个警告，但可以生成Object File。而在
+链接程序时，链接器会在所有的Object File中找寻函数的实现，如果找不到，那到就会报链接错误码
+（Linker Error）
+3.make自动推导(cc是UNIX下的)
+GNU的make很强大，它可以自动推导文件以及文件依赖关系后面的命令，于是我们就没必
+要去在每一个[.o]文件后都写上类似的命令，因为，我们的make会自动识别，并自己推导
+命令。
+只要make看到一个[.o]文件，它就会自动的把[.c]文件加在依赖关系中，如果make找到一个whatever.o，
+那么whatever.c，就会是whatever.o的依赖文件。并且 cc -c whatever.c 也会被推导出来
+4.清空目标文件规则
+每个makefile中都应该写一个清空没押镖文件(.o和执行文件)的规则
+一般风格是：
+clean:
+rm edit $(objects)
+更稳健的风格是：
+.PHONY : clean
+clean :
+-rm edit $(objects)
+.PHONY意思表示clean是一个“伪目标”，。而在rm命令前面加了一个小减号的意思就是，也许某些文件出现
+问题，但不要管，继续做后面的事
+5.Makefile总述
+Makefile里主要包含了五个东西：显式规则、隐晦规则、变量定义、文件指示和注释
+    ①显式规则
+	显式规则说明了，如何生成一个或多的的目标文件。这是由Makefile的书写者明显指出，要生成的
+	文件，文件的依赖文件，生成的命令
+	②隐晦规则
+	由于我们的make有自动推导的功能，所以隐晦的规则可以让我们比较粗糙地简略地书写Makefile，这是
+	由make所支持的
+	③变量的定义
+	在Makefile中我们要定义一系列的变量，变量一般都是字符串，这个有点你C语言中的宏，当Makefile被
+	执行时，其中的变量都会被扩展到相应的引用位置上
+	④文件指示
+	⑤注释
+	Makefile中只有行注释，和UNIX的Shell脚本一样，其注释是用“#”字符，这个就像C/C++中的“//”一样。
+	如果你要在你的Makefile中使用“#”字符，可以用反斜框进行转义，如：“\#”
+makefile的文件名
+    大多数的make都支持“makefile”和“Makefile”这两种默认文件名
+    如果要指定特定的Makefile，你可以使用make的“-f”和“--file”参数，如：make -f Make.Linux
+	或make --file Make.AIX
+引用其他的Makefile
+    在Makefile使用include关键字可以把别的Makefile包含进来，这很像C语言的#include，被包含的
+	文件会原模原样的放在当前文件的包含位置。include的语法是： include <filename>
+    filename可以是当前操作系统Shell的文件模式（可以包含路径和通配符） 在include前面可以有
+	一些空字符，但是绝不能是[Tab]键开始。include和<filename>可以用一个或多个空格隔开。
+	举个例子，你有这样几个Makefile：a.mk、b.mk、c.mk，还有一个文件叫foo.make，以及一个
+	变量$(bar)，其包含了e.mk和f.mk，那么，下面的语句：
+    include foo.make *.mk $(bar)
+6.书写规则
+    定义在Makefile中的目标可能会有很多，但是第一条规则中的目标将被确立为最终的目标
+    规则包含两个部分，一个是依赖关系，一个是生成目标的方法
+    规则举例：
+    foo.o : foo.c defs.h # foo模块
+    cc -c -g foo.c
+    foo.o是目标，foo.c,defs.h是目标依赖的文件
+    命令 cc -c -g foo.cc
+	规则语法
+	targets : prerequisites
+    command
+    ...
+    或是这样：
+    targets : prerequisites ; command
+    command
+    ...
+	command是命令行，如果其不与“target:prerequisites”在一行，那么，必须以[Tab键]开头，
+	如果和prerequisites在一行，那么可以用分号做为分隔。如果命令太长，你可以使用反斜框（‘/’）作为换行符
+	make支持三各通配符：“*”，“?”和“[...]”。这是和linux的Shell是相同的
+	波浪号（“~”）字符在文件名中也有比较特殊的用途。如果是“~/test”，这就表示当前用户的$HOME
+	目录下的test目录。而“~hchen/test”则表示用户hchen的宿主目录下的test目录。（这些都是Unix
+	下的小知识了，make也支持）
+	通配符代替了你一系列的文件，如“*.c”表示所以后缀为c的文件。一个需要我们注意的是，如果我们的文件名中
+	有通配符，如：“*”，那么可以用转义字符“/”，如“/*”来表示真实的“*”字符，而不是任意长度的字符串
+7.文件搜素
+    在一些大的工程中，有大量的源文件，我们通常的做法是把这许多的源文件分类，并存放在不同的
+	目录中。所以，当make需要去找寻文件的依赖关系时，你可以在文件前加上路径，但最好的方法是
+	把一个路径告诉make，让make在自动去找。
+    Makefile文件中的特殊变量“VPATH”就是完成这个功能的，如果没有指明这个变量，make只会在当前的目录
+	中去找寻依赖文件和目标文件。如果定义了这个变量，那么，make就会在当当前目录找不到的情况下，到所
+	指定的目录中去找寻文件了。
+    VPATH = src:../headers  目录由“冒号”分隔
+	上面的的定义指定两个目录，“src”和“../headers”，make会按照这个顺序进行搜索。目录由“冒号”分隔。（当然，当前目录永远是最高优先搜索的地方）
+
+    另一个设置文件搜索路径的方法是使用make的“vpath”关键字（注意，它是全小写的），这不是变量，
+	这是一个make的关键字，这和上面提到的那个VPATH变量很类似，但是它更为灵活。它可以指定不同
+	的文件在不同的搜索目录中。这是一个很灵活的功能。它的使用方法有三种：
+    1、vpath <pattern> <directories>
+    为符合模式<pattern>的文件指定搜索目录<directories>。
+    2、vpath <pattern>
+    清除符合模式<pattern>的文件的搜索目录。
+    3、vpath
+    清除所有已被设置好了的文件搜索目录。
+    vapth使用方法中的<pattern>需要包含“%”字符。“%”的意思是匹配零或若干字符，
+	例如，“%.h”表示所有以“.h”结尾的文件。<pattern>指定了要搜索的文件集，而<directories>
+	则指定了<pattern>的文件集的搜索的目录。例如：
+    vpath %.h ../headers
+	vpath %.c foo:bar
+    vpath % blish
+    而上面的语句则表示“.c”结尾的文件，先在“foo”目录，然后是“bar”目录，最后才是“blish”目录。
+8.变量定义
+= 和 := 的区别在于, := 只能使用前面定义好的变量, = 可以使用后面定义的变量
+例如：
+OBJS2 = $(OBJS1) programC.o
+OBJS1 = programA.o programB.o
+
+all:
+    @echo $(OBJS2)
+执行make，结果为programA.o programB.o programC.o
+OBJS2 := $(OBJS1) programC.o
+OBJS1 := programA.o programB.o
+
+all:
+    @echo $(OBJS2)
+执行make，结果为programC.o
+变量替换
+makefile  实现自动化编译
+gcc的用法
+1. 无选项编译链接
+用法：gcc test.c
+作用：将test.c预处理、汇编、编译并链接形成可执行文件。这里未指定输出文件，默认输出为a.out。
+2. 选项 -o
+用法：gcc test.c -o test
+作用：将test.c预处理、汇编、编译并链接形成可执行文件test。-o选项用来指定输出文件的文件名
+5. 选项 -c
+用法：gcc -c test.s
+作用：将汇编输出文件test.s编译输出test.o文件。
+6. 无选项链接
+用法：gcc test.o -o test
+作用：将编译输出文件test.o链接成最终可执行文件test。
+例如：
+edit : main.o kbd.o command.o display.o /
+insert.o search.o files.o utils.o
+cc -o edit main.o kbd.o command.o display.o /
+insert.o search.o files.o utils.o
+
+main.o : main.c defs.h
+cc -c main.c
+kbd.o : kbd.c defs.h command.h
+cc -c kbd.c
+command.o : command.c defs.h command.h
+cc -c command.c
+display.o : display.c defs.h buffer.h
+cc -c display.c
+insert.o : insert.c defs.h buffer.h
+cc -c insert.c
+search.o : search.c defs.h buffer.h
+cc -c search.c
+files.o : files.c defs.h buffer.h command.h
+cc -c files.c
+utils.o : utils.c defs.h
+cc -c utils.c
+clean :
+rm edit main.o kbd.o command.o display.o /
+insert.o search.o files.o utils.o 
+makefile使用变量   
+objects = main.o kbd.o command.o display.o /
+insert.o search.o files.o utils.o	
+上面例子可以写成：
+main.o : defs.h
+kbd.o : defs.h command.h
+command.o : defs.h command.h
+display.o : defs.h buffer.h
+insert.o : defs.h buffer.h
+search.o : defs.h buffer.h
+files.o : defs.h buffer.h command.h
+utils.o : defs.h
+
+
+foo = $(bar)
+bar = $(ugh)
+ugh = Huh?
+
+all:
+echo $(foo)
+
+我们执行“make all”将会打出变量$(foo)的值是“Huh?”（ $(foo)的值是$(bar)，$(bar)的值是$(ugh)，
+$(ugh)的值是“Huh?”）可见，变量是可以使用后面的变量来定义的。
+x := foo
+y := $(x) bar
+x := later
+
+其等价于：
+
+y := foo bar
+x := later
+
+值得一提的是，这种方法，前面的变量不能使用后面的变量，只能使用前面已定义好了的变量。
+FOO ?= bar
+
+其含义是，如果FOO没有被定义过，那么变量FOO的值就是“bar”，如果FOO先前被定义过，那么这条语将什么也不做
+我们可以替换变量中的共有的部分，其格式是“$(var:a=b)”或是“${var:a=b}”，其意思是，把变量“var”中
+所有以“a”字串“结尾”的“a”替换成“b”字串。这里的“结尾”意思是“空格”或是“结束符”。
+
+还是看一个示例吧：
+
+foo := a.o b.o c.o
+bar := $(foo:.o=.c)
+
+这个示例中，我们先定义了一个“$(foo)”变量，而第二行的意思是把“$(foo)”中所有以“.o”字串“结尾”全部替换成
+“.c”，所以我们的“$(bar)”的值就是“a.c b.c c.c”。
+x = y
+y = z
+a := $($(x))
+
+在这个例子中，$(x)的值是“y”，所以$($(x))就是$(y)，于是$(a)的值就是“z”。（注意，是“x=y”，而不是“x=$(y)”）
+我们可以使用“+=”操作符给变量追加值，如：
+
+objects = main.o foo.o bar.o utils.o
+objects += another.o
+
+于是，我们的$(objects)值变成：“main.o foo.o bar.o utils.o another.o”（another.o被追加进去了）
+
+使用“+=”操作符，可以模拟为下面的这种例子：
+
+objects = main.o foo.o bar.o utils.o
+objects := $(objects) another.o
+
+所不同的是，用“+=”更为简洁
+
+ifeq (<arg1>, <arg2> ) 
+ifeq '<arg1>' '<arg2>' 
+ifeq "<arg1>" "<arg2>" 
+ifeq "<arg1>" '<arg2>' 
+ifeq '<arg1>' "<arg2>" 
+
+比较参数“arg1”和“arg2”的值是否相同。当然，参数中我们还可以使用make的函数。如：
+第二个条件关键字是“ifneq”。语法是：
+
+ifneq (<arg1>, <arg2> ) 
+ifneq '<arg1>' '<arg2>' 
+ifneq "<arg1>" "<arg2>" 
+ifneq "<arg1>" '<arg2>' 
+ifneq '<arg1>' "<arg2>" 
+
+其比较参数“arg1”和“arg2”的值是否相同，如果不同，则为真。和“ifeq”类似。
+第三个条件关键字是“ifdef”。
+第四个条件关键字是“ifndef”。
+函数：
+函数调用，很像变量的使用，也是以“$”来标识的，其语法如下：
+
+$(<function> <arguments> )
+
+或是
+
+${<function> <arguments>}
+
+这里，<function>就是函数名，make支持的函数不多。<arguments>是函数的参数，参数间以逗号“,”分隔，而函数名
+和参数之间以“空格”分隔
+还是来看一个示例：
+
+comma:= ,
+empty:=
+space:= $(empty) $(empty)
+foo:= a b c
+bar:= $(subst $(space),$(comma),$(foo))
+
+在这个示例中，$(comma)的值是一个逗号。$(space)使用了$(empty)定义了一个空格，$(foo)的值是“a b c”，
+$(bar)的定义用，调用了函数“subst”，这是一个替换函数，这个函数有三个参数，第一个参数是被替换字串，
+第二个参数是替换字串，第三个参数是替换操作作用的字串。这个函数也就是把$(foo)中的空格替换成逗号，所
+以$(bar)的值是“a,b,c”
+
+名称：去空格函数——strip。
+功能：去掉<string>字串中开头和结尾的空字符。
+返回：返回被去掉空格的字符串值。
+示例：
+
+$(strip a b c )
+
+把字串“a b c ”去到开头和结尾的空格，结果是“a b c”
+名称：查找字符串函数——findstring。
+功能：在字串<in>中查找<find>字串。
+返回：如果找到，那么返回<find>，否则返回空字符串。
+示例：
+
+$(findstring a,a b c)
+$(findstring a,b c)
+
+第一个函数返回“a”字符串，第二个返回“”字符串（空字符串）
+名称：过滤函数——filter。
+功能：以<pattern>模式过滤<text>字符串中的单词，保留符合模式<pattern>的单词。可以有多个模式。
+返回：返回符合模式<pattern>的字串。
+示例：
+
+sources := foo.c bar.c baz.s ugh.h
+foo: $(sources)
+cc $(filter %.c %.s,$(sources)) -o foo
+
+$(filter %.c %.s,$(sources))返回的值是“foo.c bar.c baz.s”
+名称：反过滤函数——filter-out。
+功能：以<pattern>模式过滤<text>字符串中的单词，去除符合模式<pattern>的单词。可以有多个模式。
+返回：返回不符合模式<pattern>的字串。
+示例：
+
+objects=main1.o foo.o main2.o bar.o
+mains=main1.o main2.o
+
+$(filter-out $(mains),$(objects)) 返回值是“foo.o bar.o”。
+$(sort <list> )
+
+名称：排序函数——sort。
+功能：给字符串<list>中的单词排序（升序）。
+返回：返回排序后的字符串。
+示例：$(sort foo bar lose)返回“bar foo lose” 。
+备注：sort函数会去掉<list>中相同的单词。
+$(word <n>,<text> )
+
+名称：取单词函数——word。
+功能：取字符串<text>中第<n>个单词。（从一开始）
+返回：返回字符串<text>中第<n>个单词。如果<n>比<text>中的单词数要大，那么返回空字符串。
+示例：$(word 2, foo bar baz)返回值是“bar”
