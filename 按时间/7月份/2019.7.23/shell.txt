@@ -73,7 +73,8 @@ dash是ubuntu中默认使用的脚本解释器，及sh
   if [ ”123“=”123“];then
   ④判断数字是否相等(-eq),(-gt),(-lt),(-ge),(-le)
   ⑤判断字符串是否为空 -z
-  
+ if [ str = "" ];then
+ if [ -z $a ];then
 
 
 
