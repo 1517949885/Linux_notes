@@ -1,0 +1,98 @@
+第十五章  移植uboot
+CPU上电后会从某个地址运行，ARM结构的CPU是从地址0x00000000开始的，嵌入式开发板中，需要把存储器ROM或者
+FLASH映射到这个地址，bootloader就存放在这个地址开始处，这样一上电程序就运行了。
+bootloader可以分为两种模式，启动加载模式（产品发布时的模式，开发人员不介入）和下载模式（开发人员可以
+介入使用各种命令，通过串口控制）
+嵌入式linux系统从软件分析可以分为四个层次1.引导加载程序，包括固化在固件中的boot代码和bootloader2.linux
+内核。内核的启动参数可以是默认的，也可以是bootloader传递给他的。3.文件系统4.用户应用程序
+bootloader和内核的交互是单向的，由于bootloader和内核不能同时运行，bootloader将各类参数放在某个约定的地方
+内核启动从这个地方获得参数
+如果要使用开发板，首先要执行make <board_name>_config,再执行make all，就生成了uboot.bin，编译U-boot成功
+后还会在tools目录下生成一些工具，比如mkimage，把他们复制到/usr/local/bin目录下就可以直接使用了
+uboot的配置过程，执行make <board_name>_config的过程
+x210_sd_config :	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s5pc11x x210 samsung s5pc110
+	@echo "TEXT_BASE = 0xc3e00000" > $(obj)board/samsung/x210/config.mk
+$(@:_config=)的结果就是将x210_sd_config的_config去掉，所以，make <board_name>_config实际上执行的命令如下
+/.mkconfig x210_sd arm s5pc11x x210 samsung s5pc110
+mkconfig文件的作用，确定开发板的名字(一般为输入的第一个参数)，创建平台/开发板相关的头文件的链接，创建顶层
+makefile包含的文件#include/config.mk,创建开发板相关的头文件include/config.h,具体如下
+开发板的名字BOARD_NAME="$1"
+头文件的链接
+ln -s asm-$2 asm
+ln -s ${LNPREFIX}arch-$6 asm-$2/arch
+ln -s ${LNPREFIX}proc-armv asm-$2/proc
+config.mk文件内容
+ARCH   = $2
+CPU    = $3
+BOARD  = $4
+VENDOR = $5
+SOC    = $6
+config.h文件内容
+#include <configs/$1.h>
+执行make all过程
+包含顶层config.mk,(包含了include/config.mk文件)
+编译cpu/$CPU/start.S或者该目录下其他文件
+对平台/开发板相关的每个目录，每个通用目录都是用他们各自的makefile生成相应的库
+将前面生产的.o  .a文件根据board/$(BOARDDIR)/config.mk中指定的代码段起始地址board/$(BOARDDIR)/u-boot.lds链
+接脚本进行连接
+uboot的启动过程
+第一阶段：硬件初始化(cpu设置成管理模式svc，关闭看门狗等操作)，准备RAM空间(初始胡RAM芯片,lowlevel_init.c)
+将整个uboot复制到SDRAM，在start.S实现。设置好栈
+第二阶段:初始化硬件和驱动(时钟，串口等)，内存映射，命令(U_BOOT_CMD在include <command.h>中有定义)
+第十五章  移植linux内核
+偶数是稳定版，比如2.4.xx.x   2.6.xx.x。奇数是开发中的版本号。
+makefile的三大作用:
+1.决定编译哪些文件
+顶层makefile决定内核根目录的哪些子目录被编进内核
+顶层makefile将文件夹分成六类
+init-y		:= init/                                                562行左右
+drivers-y	:= drivers/ sound/ firmware/
+net-y		:= net/
+libs-y		:= lib/
+core-y		:= usr/
+virt-y		:= virt/
+core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/  893行左右
+对于ARCH变量，可以在执行make命令的时候传入，make ARCH=arm，指定交叉编译环境也可以传入，比如CROSS_COMPILE
+=xxxxxx，也可以在顶层makefile直接修改这两个变量的值，在255行左右
+arch/$(ARCH)/makefile决定该目录下哪些文件哪些子目录被编进内核
+head-y		:= arch/arm/kernel/head$(MMUEXT).o
+core-$(CONFIG_FPE_NWFPE)	+= arch/arm/nwfpe/
+core-$(CONFIG_FPE_FASTFPE)	+= $(FASTFPE_OBJ)
+core-$(CONFIG_VFP)		+= arch/arm/vfp/
+core-$(CONFIG_XEN)		+= arch/arm/xen/
+core-$(CONFIG_KVM_ARM_HOST) 	+= arch/arm/kvm/
+core-$(CONFIG_VDSO)		+= arch/arm/vdso/
+
+core-y				+= arch/arm/kernel/ arch/arm/mm/ arch/arm/common/
+core-y				+= arch/arm/probes/
+core-y				+= arch/arm/net/
+core-y				+= arch/arm/crypto/
+core-y				+= arch/arm/firmware/
+core-y				+= $(machdirs) $(platdirs)
+
+drivers-$(CONFIG_OPROFILE)      += arch/arm/oprofile/
+
+libs-y				:= arch/arm/lib/ $(libs-y)
+编译内核时，依次进入这些目录执行他们的makefile，生成.o .a文件，head-y所便是的文件把这些生成的文件连接成
+内核映像文件
+在配置内核时，生成生成配置文件.config文件，内核顶层makefile用-include include/config/auto.conf(572行左右)
+间接包含，根据.config的各个变量觉得编译哪些文件，之所以说间接包含，是因为此文件内容是将.config文件的注释
+去掉，并且增加了makefile中定义的变量。在这个文件中，变量的名字主要由y和m两种，各级子目录makefile根据这些
+变量来决定是将文件编进内核还是编成模块(驱动程序)，要进入哪些下一级子目录继续编译。
+obj-y用来定义哪些文件被编进内核//编译生成的.o文件，被组合进built-in.o文件
+obj-m用来定义哪些文件被编成模块//编译生成的.o文件，被制成.ko模块
+lib-y用来定义哪些文件被编成库文件//编译生成的.o文件，被打包成一个.a库文件，同时出现在obj-y、lib-y的文件不会
+被编成.a文件
+obj-y、obj-m可以指定要进入的下一层子目录，只要在其中增加这些子目录即可。
+编译选项，连接选项分为三类，第一类:全局，适用于整个内核，在顶层makefile或者ARCH/arm/makefile，例如CFLAGS、
+AFLAGS,LDFLAGS,ARFLAGS,分别代表编译C文件的选项，编译汇编文件的选项，连接文件的选项，制作库文件的选项
+第二类:局部，在各个子目录定义，适用某个makefile中所有文件，例如EXTRA_CFLAGS,EXTRA_AFLAGS,EXTRA_LDFLAGS,
+EXTRA_ARFLAGS，第三类：个体，针对某个文件，例如CFLAGS_$@,这三个选项一起使用。
+连接脚本 arch/arm/kernel/vmlinux.lds,根据这个生成vmlinux镜像
+
+
+
+
+
+

@@ -1,0 +1,19 @@
+1.case语句（类似于C语言中switch case语句）
+  case $a in:
+  数值) xxxxx ;;
+  esca
+2.shell程序的传参
+  使用一些特定符号表示
+  $#  表示shell传参的个数，只考虑真正的参数个数，和C语言不一样
+  $0  $1  $2  传参的各个参数内容
+  C语言中:./a.out aa bb cc   argc=4;argv[0]=./a.out  argv[1]=aa,依此类推
+  shell中:source a.sh aa bb cc $#=3;$0是执行这个shell程序的解析程序的名字 一般是bash
+  $1=aa,依此类推
+  shell中的break和C语言中的break不一样，不退出break
+  内置参数$#  $1不是不可变的，可以被shift指令修改，$#减1，$2变成$1
+  while循环和case结合
+  while [ $# -gt 0 ]
+  do
+    case "$1" in
+	esac
+  done

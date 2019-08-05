@@ -1,0 +1,10 @@
+3.1 uboot
+   uboot的三种获取途径:uboot官方、SOC官方、具体开发板的官方
+   x210开发板下的配置。
+   make x210_sd_config,出现出现Configuring for x210_sd board...则表示配置成功
+   编译(需要安装arm-linux-gcc工具链)
+   检查当前目录的Makefile中编译器的设置是否正确。在工程的总Makefile中设置的交叉
+   编译工具链的路径和名字必须和我们的路径和名字一致。/usr/local/arm/arm-2009q3/bin/arm-none-linux-gnueabi-
+   编译直接make即可  make -j4(多线程编译)make -j2(多线程编译)电脑多核
+  
+   

@@ -1,0 +1,53 @@
+清除  make distclean
+3.3 uboot源码目录分析
+    1.各文件介绍
+	  .gitignore.git   git工具的文件
+	  arm_config.mk  是一个Makefile文件,在别的Makefile会调用
+	  三个Changelog文件，修改记录文件
+	  config.mk  是一个Makefile文件,在别的Makefile会调用
+	  COPYING    版权声明
+	  CREDITS(credits)鸣谢，对uboot有贡献的人
+	  image_split 一个脚本
+	  MAINTAINERS（maintainers）维护者
+      MAKEALL  一个脚本	
+      Makefile  uboot源代码的主Makefile
+      mk 一个脚本，里面是快速编译(清理，配置，编译) make distclean ;make x210_sd_config;make -j4
+      mkconfig这个很重要，是uboot配置阶段的主要配置脚本,uboot的可移植性很大程度上就是靠这个脚本。
+      mkmovi  一个脚本，和SD卡，iNAND启动有关
+	  README
+	  rule.mk  uboot的Makefile使用规则，不去分析
+	  以上文件重要的是mkconfig  Makefile
+	2.各文件夹介绍
+      api文件夹  硬件无关功能函数的API，uboot移植时不用管。
+	  api_examples API的测试示例代码
+	  board 文件夹下每一个文件代表一个开发板，内容描述开发板的信息，多少文件夹代表当前uboot已经移植到了
+	  多少开发板（有的是厂家目录，目录下是开发板），所以x210对应的开发板在board/samsung/x210中，会影响配置阶段。
+	  uboot在配置阶段会确定使用board目录下的哪个文件夹，所以先配置后编译
+	  Uboot的配置阶段(其实就是mkconfig脚本和makefile中配置相关的部分)，主要解决的就是在可移植领域确定具体文件夹
+	  路径使其编译成功。
+	  common 与具体硬件无关的，普遍使用的代码，比如控制台的实现，crc校验，更多的
+	  主要是两类，cmd开头用来实现uboot的命令系统。env开头，用来实现环境变量
+	  cpu  Soc相关的初始化和控制代码(譬如cpu的中断,串口也包括起始代码start.S)，里面有很多文件夹，每个文件夹
+	  都是一个SOC系列，这个是硬件相关的。X210虽然开发板和三星官方不同，但是SOC相同，因此这个几乎不用动
+	  disk  和磁盘有关
+	  doc   文档目录，里面存放了很多uboot文档，可以帮助我们理解uboot
+	  drivers  驱动，linux的设备驱动从liunx源代码移过来的，如网卡，flash，inand，nandflash。uboot中的驱动
+	  其实就是linux中的驱动但是因为linux是操作系统，uboot是裸机程序，所以有不同，只是linux中驱动的一部分
+	  examples  示例代码
+	  fs  (filesyatem)文件系统，从linux移植过来的，管理flash
+	  include 头文件目录。uboot和linux kernel都采用把所有的头文件放在include文件夹下
+	  lib_开头的(典型的lib_arm，lib_generic)架构相关的库文件。lib_arm是arm架构的
+      使用的一些库文件，lib_generic是所有架构通用的库文件，移植时不用管
+	  libfdt  设备树有关的，linux内核在3.4后改用设备树传参机制。后面会讲，现在我们用的不是设备树传参。
+	  nand_spl nand相关的
+	  net 网络相关的，譬如uboot的tftp，nfs，ping
+	  onenand   官方没有这两个文件夹，samsung自己的
+	  sd_fusing 实现烧录uboot到SD卡的代码，后面需要仔细研究
+	  tools  工具类的代码
+	  board，common，cpu，drivers，include，sd_fusing比较重要	 
+3.4 sourceInsight的使用
+      对多个.c   .h文件，且关联比较复杂，分析和阅读越来越难
+      建立工程添加文件 project->new project	  
+	  添加文件默认只能识别部分文件类型，需要修改设置添加所有的文件
+	  在options->file type option     file type选择C  添加别的文件类型  例如 *.S   然后再次添加 project下   
+      在project->synchronize files  下选上第一个和第三个  Force和Add,确定。这样会先解析，查询更快

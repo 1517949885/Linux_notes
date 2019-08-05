@@ -24,7 +24,7 @@ tar cjvf ubootjiuding.tar.bz2 uboot
 	   CREDITS(credits)鸣谢，对uboot有贡献的人
 	   image_split 一个脚本
 	   MAINTAINERS（maintainers）维护者
-       MAKEALL  一个脚本	
+       MAKEALL  一个脚本,应该是帮助编译uboot	
        Makefile  uboot源代码的主Makefile
        mk 一个脚本，里面是快速编译(清理，配置，编译)
        mkconfig这个很重要，是uboot配置阶段的主要配置脚本
