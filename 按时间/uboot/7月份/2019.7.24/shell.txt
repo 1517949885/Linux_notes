@@ -1,9 +1,9 @@
 1.if判断式中使用 -o表示逻辑或
-  if [7 -gt 7 -o 9 -gt 7 ];then
+  if [ 7 -gt 7 -o 9 -gt 7 ];then
   逻辑与&&与逻辑或||
   简写的if表达式
-  [ str != ""]&&echo "kong"    输出kong
-  [ str = ""]||echo "kong"
+  [ str != "" ]&&echo "kong"    输出kong
+  [ str = "" ]||echo "kong"
   加{}，例如
   var=123
   echo "${var}456

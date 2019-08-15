@@ -1,0 +1,6 @@
+1.分析start.S文件
+    .globl _start  使用.globol声明全局符号_start，整个程序的入口取决于链接脚本中的ENTRY声明的地方
+    ENTRY(_start),_start所在处的代码就是整个程序的起始代码
+	.balignl 16,0xdeadbeef  它的意思就是在以当前地址开始，在地址为16的倍数的指令位置的上一个指令填入
+	为0xdeadbeef的内容,此时当前地址刚好0x3c=60,由于ARM每个指令间隔4个字节,且64%16=0,所以在0x3c中填入0xdeadbeef。
+	

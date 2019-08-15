@@ -1,0 +1,69 @@
+4.6 uboot的配置
+    定义OBJS和LIBS   190行
+    makefile之addprefix，添加前缀
+	OBJS := $(addprefix $(obj),$(OBJS))
+	OBJS:=$(obj)$(OBJS)
+	主makefile第一个目标all(默认目标)   291行
+	make all 编译之后生成一些比较重要的目标，譬如u-boot是最终编译生成的elf文件
+	有个unconfig的目标，这个作为所有开发板配置的依赖。
+4.7 uboot的配置过程  mkconfig
+    x210_sd_config :	unconfig
+		@$(MKCONFIG) $(@:_config=) arm s5pc11x x210 samsung s5pc110
+		@echo "TEXT_BASE = 0xc3e00000" > $(obj)board/samsung/x210/config.mk
+	1.$@是目标的意思，即x210_sd_config. 后面：是加工，即将目标中的_config用=后的空替换。所以最终
+	  第一个参数就是x210_sd
+	  $1 x210_sd  $2 arm $3 s5pc11x $4 x210 $5 samsung $6 s5pc110  $# 6($0 bash)
+	2.前22行无作用
+	  第23行
+	  [ "${BOARD_NAME}" ] || BOARD_NAME="$1"  判断BOARD_NAME是否为空，为空则赋值。BOARD_NAME=x210_sd
+	  25,26行
+	  [ $# -lt 4 ] && exit 1
+      [ $# -gt 6 ] && exit 1
+	  传参不符合返回1退出，传参只能是4,5,6
+	3.(在windows下链接文件不显示)
+	  33-118 创建符号链接   ln -s 源文件  目标文件
+	  这些符号链接文件夹主要作用是给头文件包含等过程提供指向性连接，根本目的是让uboot具有可移植性。
+	  在uboot中有很多平行的代码(不同架构，开发板，CPU)，使用符号链接方式提供一个具体名字的文件夹
+	  在include下创建asm，指向asm-$2
+	  在include/arm-$2下创建arch文件，指向include/arm-$2/arch-$6   //因为没有arch-s5pc110
+	  if [ -z $6 -o $6="NULL" ]  -o相当于或 	||	
+	  在include下创建regs.h文件，指向$6.h
+	  删除第二部的文件，在include/arm-$2下创建arch文件，指向include/arm-$2/arch-$3
+	  在include/asm-$2/下创建proc，指向include/asm-$2/proc-armv
+	  123-129
+	  创建include/config.mk,为了让主makefile的133行包含
+	  134-结束
+	  创建或追加 include/config.h
+	  这个文件就一行#include <configs/x210_sd.h>
+	  x210_sd.h会生成一个autoconfig.mk文件，这个文件会被主Makefile引入，这里面的宏会影响
+	  大部分.c文件的条件编译，这个文件是我们移植x210时最主要的文件。这个文件会影响我们对uboot中大部分.c文件中的
+	  一些条件编译的选择。
+	  在uboot中配置和编译过程，所有的文件或者全局变量都是字符串形式。
+4.8 uboot的链接脚本
+      ENTRY(_start)用来指定整个程序的入口地址，有点类似于c语言的main。汇编阶段的开始程序。
+	  SECTIONS{}分为代码段，数据段，bss段
+4.9 makefile的一些补充
+      arm-linux-gcc  编译选项
+        -o  编译及链接,会生成一个exe可执行文件
+        -Wall  指定产生全部的警告信息 
+        -O/-O2/-O3   数字越高，代表优化的更多，可以使生成的执行文件的提高执行效率
+        -c 编译不链接,会生成一个*.obj文件，若后面加了-o,则表示指定输出文件名称
+        -static   静态链接,生成的文件会非常大, 好处在于不需要动态链接库,也可以运行
+        -S 只激活预处理和编译，就是指把文件编译成为汇编代码
+	    arm-linux-gcc -c -o  led.o led.c   :编译不链接
+        arm-linux-gcc   -o  led  led.c       :编译以及链接
+	  arm-linux-ld    连接选项
+        -Ttext 0x00000000    指代码段头地址为0x00000000
+        -T链接脚本           指使用链接脚本来进行更复杂的地址设置，包括了代码段，数据段，bss段等
+        -o                   后面指的将多个文件连接在一起,生成一个obj文件，上面的名称是led_elf。
+        -pie　　　　         生成动态链接地址段,一般在新版uboot里会看到
+		arm-linux-ld -Ttext 0x00000000 -g crt0.o led.o -o led_elf
+      arm-linux-objcopy   复制选项，支持格式转换
+        -O binary            用来指定生成文件按照后面的格式来输出，其中binary是指生成二进制（.bin）文件。     
+        -S                   不从源文件中复制重定位信息和符号信息到目标文件中去
+		arm-linux-objcopy -O binary -S led_elf led.bin
+      arm-linux-objdump   反编译选项 
+        -D                反编译所有段
+        -b binary         指定反编译目标文件格式
+        -m ram            指定反编译目标文件所需的架构，这里是ram架构
+		arm-linux-objdump -D -m arm led_elf > led.dis

@@ -1,6 +1,6 @@
 1.start.S的引入
    在c语言中，整个项目的入口就是main函数
-   在uboot中因为有汇编阶段参与，不能直接找main.c，真个程序的入口取决于链接脚本中的ENTRY声明的地方
+   在uboot中因为有汇编阶段参与，不能直接找main.c，整个程序的入口取决于链接脚本中的ENTRY声明的地方
    ENTRY(_start),_start所在处的代码就是整个程序的起始代码，在start.S中
 2.start.S的解析
    头文件包含
