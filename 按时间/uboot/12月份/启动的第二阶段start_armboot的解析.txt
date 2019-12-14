@@ -1,0 +1,250 @@
+1.start_armboot函数简介
+   start_armboot在uboot/lib_arm/board.c中，是c文件，这个函数是uboot的第二阶段
+   这个函数在444-908行，其中还调用了其他函数，这个函数构成了uboot的第二阶段，没有分成多个函数。
+   uboot的第一阶段主要初始化了SOC内部的一些部件(譬如看门狗、时钟)，然后初始化DDR，重定位
+   uboot的第二阶段应该做什么
+   初始化剩下的还没有被初始化的硬件,主要是SoC外部硬件(譬如iNand,网卡等)，uboot本身的
+   东西(uboot的命令，环境变量等 )，初始完后进入uboot命令行准备接受命令
+   第二阶段的结束:uboot不断初始化，打印出很多启动信息，然后进入bootdelay秒倒计时，然后执行bootcmd变量
+   对应的命令，启动内核死掉。在bootdelay秒倒计时可以按回车打断uboot进入命令行。如果用户没有干涉会执行bootcmd，如果用户
+   回车进入uboot命令行，然后一直在命令行下死循环，接受命令，解析命令，执行命令
+2.start_armboot解析1
+     typedef int (init_fnc_t) (void)； 是一个函数类型
+	 init_fnc_t **init_fnc_ptr;//init_fnc_ptr是一个二重函数指针，二重指针的作用有
+	 两个，一个是用来指向一重指针，一个是用来指向指针数组。这里我们指向函数指针数组
+	 DECLARE_GLOBAL_DATA_PTR   在这个c文件的70行的一个定义
+	 #define DECLARE_GLOBAL_DATA_PTR     register volatile gd_t *gd asm ("r8")
+	 定义了一个全局变量名字叫做gd,这个全局变量是一个指针类型，占四个字节，用volatile
+	 修饰表示他是可变的，用register修饰表示这个变量尽量放到寄存器，asm("r8")是gcc支持
+	 的一种语法，意思是把gd放到寄存器r8。意思是，定义一个放到寄存器r8的全局变量，名字
+	 叫gd，类型是指向gd_t类型变量的指针。
+	 因为全局变量gd(gloal data的简称)，是uboot的一个全局变量(这个变量是一个结构体，
+	 里面有很多内容，加起来的就是uboot常用的全局变量)，gd常被访问，放在register
+	 中提升运行效率(和功能无关，并不是必须的)。gd_t定义在Include/asm-arm/global_data.h，这个结构体包含bd_t变量,
+	 bd_t类型的指针比较重要，里面是硬件相关的参数，比如:波特率，IP地址，机器码，启动参数地址，DDR内存
+	 分配等(有两个波特率，控制台和硬件的波特率，其实是一样的)
+3.内存使用排布
+     DECLARE_GLOBAL_DATA_PTR只能定义一个指针，gd里的全局变量需要分配内存。裸机程序没有malloc管理器，当前没有被管理。
+	 CFG_UBOOT_BASE:uboot的其实地址0x33e00000   
+	 CFG_UBOOT_SIZE:uboot定义的大小2M(2*1024*1024)
+	 CFG_MALLOC_LEN:定义的堆的大小 CFG_ENV_SIZE + 896*1024=16K+896K=912K
+	 CFG_STACK_SIZE:定义的栈的大小 512K
+	 sizeof(gd_t):36个字节
+	 sizeof(bd_t):大概44个字节
+	 gd_base = CFG_UBOOT_BASE + CFG_UBOOT_SIZE - CFG_MALLOC_LEN - CFG_STACK_SIZE - sizeof(gd_t);
+	 gd = (gd_t*)gd_base;
+	 
+	 memset ((void*)gd, 0, sizeof (gd_t));
+	 gd->bd = (bd_t*)((char*)gd - sizeof(bd_t));
+	 memset (gd->bd, 0, sizeof (bd_t));
+	 在指针中，减去多少，就是减去数字*(指向的类型大小)，因为这里是减去大小，所以转换成char *或者int
+	 uboot区:CFG_UBOOT_BASE--------CFG_UBOOT_BASE+xxx(uboot的大小)   0X33E00000
+	 栈区：CFG_UBOOT_BASE+2M-0X100向下
+4.start_armboot分析2
+     init_sequence是一个函数指针数组，数组中存储了很多函数指针，这些指针指向的函数都是
+	 init_fnc_t类型(参数是void，返回值是int)。init_sequence在定义就同时给了初始化，初始化的函数指针都是函数名，
+	 (函数名的实质就是函数指针，是一个地址)
+	 for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
+	 if ((*init_fnc_ptr)() != 0) {
+			hang ();
+		}
+	 }
+	 上面*init_fnc_ptr等价于*init_fnc_ptr !=NULL,这里是遍历函数指针数组，一般使用数组下标遍历或者这里的使用一个标志(NULL)结束。
+	 这些函数正常返回0，不正确返回-1，不正确挂起，执行printf("X-Loader hangs\n");不能有一个错误，否则终止。
+	 init_sequence是board级别的各种硬件初始化
+	 
+	 cpu_init()   CPU内部初始化，为空
+	 
+	 board_init()  在board/samsung/x210/x210.c中，是x210开发板的初始化 
+	 DECLARE_GLOBAL_DATA_PTR   调用，定义成宏使用gd方便
+	 网卡初始化  dm9000_pre_init();  dm9000网卡的初始化。如果uboot要移植网卡，就在这里，网卡的驱动都是现成的，这里是GPIO的初始化，硬件的配置，驱动不需要修改。
+	 DDR的初始化:	 gd->bd->bi_arch_number = MACH_TYPE;
+	                gd->bd->bi_boot_params = (PHYS_SDRAM_1+0x100);
+	 这里的DDR初始化和之前第一阶段的DDR初始化是不一样的，uboot第一阶段是硬件的初始化，这里是纯软件层次的初始化。
+	 在x210_sd.h用宏定义配置DDR的信息，uboot的读即可，或者通过代码读硬件信息知道DDR的配置，这里采用的是第一种方式。PC机用的是第二种。
+	 配置在500行左右
+	 #define CONFIG_NR_DRAM_BANKS    2          /* we have 2 bank of DRAM */
+	 #define SDRAM_BANK_SIZE         0x10000000    /* 512 MB lqm*/
+	 //#define SDRAM_BANK_SIZE         0x20000000    /* 1GB lqm*/
+	 #define PHYS_SDRAM_1            MEMORY_BASE_ADDRESS /* SDRAM Bank #1 */  0x30000000
+	 #define PHYS_SDRAM_1_SIZE       SDRAM_BANK_SIZE
+	 #define PHYS_SDRAM_2            MEMORY_BASE_ADDRESS2 /* SDRAM Bank #2 */  0x40000000
+	 #define PHYS_SDRAM_2_SIZE       SDRAM_BANK_SIZE
+	 gd->bd->bi_arch_number = MACH_TYPE;  在x210_sd.h定义，值是2456
+	 bi_arch_number是开发板的机器码，uboot给开发板定义的唯一编码，主要作用是uboot和linux内核之间进行适配。
+	 机器码对上才启动。嵌入式设备都是定制化的，不能通用。uboot和Linux内核都有一个软件维护的机器码。uboot的机器码回传给linux。
+	 相等启动。理论上机器码是不能定的。
+	 gd->bd->bi_boot_params = (PHYS_SDRAM_1+0x100);  0x30000100
+	 uboot给linux kernel启动是传参的地址(uboot把需要传递的参数放在一块内存)，uboot事先将准备好的的参数放在内存，bi_boot_params
+	 地址处，实际上uboot通过三个寄存器r0 r1 r2直接传递参数给linux kernel，其中一个寄存器就是bi_boot_params，内核启动后读寄存器
+	 就知道传递的参数在内存的哪里。
+	 
+	 interrupt_init  看函数和中断初始化有关，这里是定时器timer4的初始化，在裸机中讲过共有5个PWM定时器，0-3都对应一个pwm输出的引脚
+	 但是timer4没有引脚，没有TCMPB寄存器，无法输出PWM波形，这个定时器是用来做计时的。用来做计时是需要寄存器TCNTB4,TCNTO4,每次时间
+	 由时钟决定。Timer4没有中断支持。uboot中的定时使用这个定时器的。设为为定时10ms，开始定时器。
+	 	/* use PWM Timer 4 because it has no output */
+	 /* prescaler for Timer 4 is 16 */
+	 timers->TCFG0 = 0x0f00;
+	 if (timer_load_val == 0) {
+		/*
+		 * for 10 ms clock period @ PCLK with 4 bit divider = 1/2
+		 * (default) and prescaler = 16. Should be 10390
+		 * @33.25MHz and  @ 66 MHz
+		 */
+		timer_load_val = get_PCLK() / (16 * 100);   //得到PCLK_PSYS,算定时10ms
+	 }
+
+	 /* load value for 10 ms timeout */
+	 lastdec = timers->TCNTB4 = timer_load_val;
+	 /* auto load, manual update of Timer 4 */
+	 timers->TCON = (timers->TCON & ~0x00700000) | TCON_4_AUTO | TCON_4_UPDATE;
+	 /* auto load, start Timer 4 */
+	 timers->TCON = (timers->TCON & ~0x00700000) | TCON_4_AUTO | COUNT_4_ON;   //开启定时器
+	 timestamp = 0;
+	 
+	 env_init   环境变量有关的初始化
+	 有很多env_init函数，支持不同的启动介质，使用哪种启动介质将环境变量放在哪里，各种介质有不同的存取方式。这里使用的是env_movi.c的。
+	 对内存里维护的那一份uboot的env做了基础的初始化和判定，因为我们还没有进行环境变量从SD卡到DDR的重定位，所以还得从SD卡中读变量
+	 所以还不用，在start_armboot在776行重定位
+	 
+	 init_baudrate //初始化串口通信的波特率，getenv_r()是读取环境变量的值，读取的是字符串，转成变量，读到则用环境变量，读不到用定义的值。
+	 环境变量优先级更高
+	 int i = getenv_r ("baudrate", tmp, sizeof (tmp));
+	 gd->bd->bi_baudrate = gd->baudrate = (i > 0)
+			? (int) simple_strtoul (tmp, NULL, 10)
+			: CONFIG_BAUDRATE;
+			
+	 serial_init  初始化串口，在BL1用汇编初始化过了，这里什么都没有做，我们使用的是cpu/s5pc11x里面的serial_init
+	 
+	 console_init_f 控制台的第一阶段的初始化,后面加f表示第一阶段初始化，r表示第二阶段初始化,有时候初始化函数不能一起完成。
+	 在start_armboot的826行console_init_r()。
+	 gd->have_console = 1;   只有这一句操作，这时候还不能用控制台
+	 
+	 display_banner  串口输出显示uboot的logo，banner是标志的意思，打印U-BOOT XXXXXXXXX
+	 printf ("\n\n%s\n\n", version_string); 
+	 const char version_string[] =
+	        U_BOOT_VERSION" (" __DATE__ " - " __TIME__ ")"CONFIG_IDENT_STRING;
+	 U_BOOT_VERSION是在makefile中定义的。
+	 调用的是console.c的printf，在这个函数调用了puts，(控制台调用fputs，调用stdio_devices[file]->puts (s))因为还没有初始化完控制台，所以调用
+	 serial_puts ()在调用serial_putc ()，使用寄存器发送。
+	 用控制台发送和直接发送最终都是硬件的通信函数来实现
+	 控制台的通信函数到硬件的通信函数之间用软件做了一些优化，譬如缓冲。操作系统的控制台都做了缓冲机制，有时候会输出了信息但是屏幕上还没有显示
+	 ，因为被缓冲了，只是到了console的buffer，还没有被刷到硬件设备。(尤其是LCD)
+	 
+	 print_cpuinfo()//打印cpu的信息，一些时钟信息
+	 
+	 checkboard()   //检查开发板并且打印开发板名字
+	 printf("\nBoard:   X210\n");
+	 
+	 init_func_i2c()  //没有被执行，想要开启配置x210_sd.h内相应的宏即可
+	 (实践，修改版本号  checkboard)
+	 烧录:uboot文件下的sd_fusing  清除重新生成文件(make)
+	      ./sd_fusing.sh /dev/sdb
+		  
+	 dram_init  关于DDR的一些软件初始化，给全局变量赋值，
+	 gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
+	 gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
+	 #if defined(PHYS_SDRAM_2)
+	 gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
+	 gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
+	 #endif
+	 #if defined(PHYS_SDRAM_3)
+	 gd->bd->bi_dram[2].start = PHYS_SDRAM_3;
+	 gd->bd->bi_dram[2].size = PHYS_SDRAM_3_SIZE;
+	 #endif
+	 
+	 display_dram_config  //对大小进行计算，算出大小  512M
+	 for (i=0; i<CONFIG_NR_DRAM_BANKS; i++) {
+	 size += gd->bd->bi_dram[i].size;
+	 }
+	 puts("DRAM:    ");
+	 print_size(size, "\n");
+	 在uboot控制台，命令bdinfo可以打印出gd->bd的结构体的值
+4.start_armboot分析9
+     #ifndef CFG_NO_FLASH
+	/* configure available FLASH banks */
+	size = flash_init ();
+	display_flash_config (size);
+    #endif /* CFG_NO_FLASH */
+	这里没有定义CFG_NO_FLASH,一般flash指的是Norflash,Nandflash简称Nand
+	这里的代码是Norflash初始化，打印大小,实际上x210没有norflash，是可以去掉的，之前是用来存放uboot的。
+	
+	CONFIG_VFD CONFIG_LCD是显示相关的，是uboot自带的LCD显示的软件架构，这里没有用，用的是自己添加的。
+	#ifdef CONFIG_MEMORY_UPPER_CODE /* by scsuh */
+	mem_malloc_init (CFG_UBOOT_BASE + CFG_UBOOT_SIZE - CFG_MALLOC_LEN - CFG_STACK_SIZE);
+    #else
+	mem_malloc_init (_armboot_start - CFG_MALLOC_LEN);
+    #endif
+	定义了CONFIG_MEMORY_UPPER_CODE
+	mem_malloc_start = dest_addr;
+	mem_malloc_end = dest_addr + CFG_MALLOC_LEN;
+	mem_malloc_brk = mem_malloc_start;
+	memset ((void *) mem_malloc_start, 0,
+			mem_malloc_end - mem_malloc_start);
+	堆区的初始化
+	
+	有几十行某些开发板独有的初始化，这里只有210的有作用，599-632行，这里初始化SOC内部的SD/MMC的控制器
+	#if defined(CONFIG_X210)
+		#if defined(CONFIG_GENERIC_MMC)
+			puts ("SD/MMC:  ");
+			mmc_exist = mmc_initialize(gd->bd);
+			if (mmc_exist != 0)
+			{
+				puts ("0 MB\n");
+			#ifdef CONFIG_CHECK_X210CV3
+				check_flash_flag=0;//check inand error!
+			#endif
+			}
+			#ifdef CONFIG_CHECK_X210CV3
+			else
+			{
+				check_flash_flag=1;//check inand ok! 
+			}
+			#endif
+		#endif
+		#if defined(CONFIG_MTD_ONENAND)
+			puts("OneNAND: ");
+			onenand_init();
+			/*setenv("bootcmd", "onenand read c0008000 80000 380000;bootm c0008000");*/
+		#else
+			//puts("OneNAND: (FSR layer enabled)\n");
+		#endif
+		#if defined(CONFIG_CMD_NAND)
+			puts("NAND:    ");
+			nand_init();
+		#endif
+	#endif /* CONFIG_X210 */	
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 

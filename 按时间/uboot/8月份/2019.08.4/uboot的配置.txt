@@ -1,7 +1,7 @@
 经过分析，大概是这样的，再makefile中执行shell命令如果有在命令行输出结果，必须赋给变量，没有结果输出的不用
 例如
 $(shell [ -d a ]||mkdir a)
-a=(shell [ -d a ]||echo 123)
+a=$(shell [ -d a ]||echo 123)
 4.1 uboot主Makefile的分析
     1.uboot版本号的确定(uboot version)
 	 uboot的版本号分为四个部分
@@ -43,8 +43,8 @@ a=(shell [ -d a ]||echo 123)
 	  HOSTOS 主机系统  uname -s查看
 	4.静默编译  50-54
 	  makefile下的函数findstring举例
-	  str1:a b c
-	  str1:a b c
+	  str1=:a b c
+	  str1=:b c
 	  all:
 	       echo $(findstring a,$str1)
 		   echo $(findstring a,$str2)

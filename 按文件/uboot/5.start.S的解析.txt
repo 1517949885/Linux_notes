@@ -92,13 +92,16 @@
 	③关闭看门狗
 	④一些SRAM和SROM的初始化  //我们可以不用管
 	⑤供电锁存，100-104，110行后有意义
-	⑥110-115   判断当前代码执行的位置(在DDR还是SRAM),是否跳过时钟初始化和内存初始化，低功耗唤醒在DDR中
+	⑥110-115   判断当前代码执行的位置(在DDR还是ISRAM),是否跳过时钟初始化和内存初始化，低功耗唤醒在DDR中
+	(uboot的BL1在ISRAM和DDR都有，冷启动iSRAM启动)
+	当前代码在DDR中，时钟，DDR不用初始化，在iSRAM需要初始化时钟、DDR
 	ldr	r0, =0xff000fff
 	bic	r1, pc, r0		/* r0 <- current base addr of code */  r1=pc&(~r0)
 	ldr	r2, _TEXT_BASE		/* r1 <- original base addr in ram */链接地址加载到r2
 	bic	r2, r2, r0		/* r0 <- current base addr of code */  r2=r2&(~r0)
 	cmp     r1, r2                  /* compare r0, r1                  */
 	beq     1f			/* r0 == r1 then skip sdram init   */
+	1f  1表示跳转到1  f往下找   b往回找
 	注:
 	adr r0 _start   //加载_start当前运行地址
 	ldr r0 _start   //加载_start链接地址
@@ -134,6 +137,11 @@
 	 cmp     r1, r2                  /* compare r0, r1                  */
 	 beq     after_copy		/* r0 == r1 then skip flash copy   */
 	 ④312-355  重定位
+	 ldr	r0, =0xD0037488
+	 ldr	r1, [r0]
+	 ldr	r2, =0xEB200000
+	 cmp	r1, r2
+	 beq     mmcsd_boot
 	 D0037488  在SRAM中，这个地址的值是被硬件自动设置的，硬件根据SD卡在哪个通道，会将这个地址设置为
 	 相应的数字SD0:eb000000   SD2:EB200000
 	 在260行确认怎么确定，在278行写入了一个寄存器	
