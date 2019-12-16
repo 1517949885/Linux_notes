@@ -183,10 +183,11 @@
 			mem_malloc_end - mem_malloc_start);
 	堆区的初始化
 	
-	有几十行某些开发板独有的初始化，这里只有210的有作用，599-632行，这里初始化SOC内部的SD/MMC的控制器
+	有几十行某些开发板独有的初始化，这里用宏定义只有210的有作用，599-632行，这里初始化SOC内部的SD/MMC的控制器，这里是自己添加的
+	函数mmc_initialize在uboot/drivers/mmc/mmc.c  uboot对硬件的操作(网卡，SD卡)都是借用linux内核的驱动，在uboot/driver中
 	#if defined(CONFIG_X210)
 		#if defined(CONFIG_GENERIC_MMC)
-			puts ("SD/MMC:  ");
+			puts ("SD/MMC:  ");   //打印
 			mmc_exist = mmc_initialize(gd->bd);
 			if (mmc_exist != 0)
 			{
@@ -213,8 +214,32 @@
 			puts("NAND:    ");
 			nand_init();
 		#endif
-	#endif /* CONFIG_X210 */	
-	 
+	#endif /* CONFIG_X210 */
+	在IROM简单初始化了MMC
+	mmc_initialize是硬件架构无关的，都调用这个(所有的SD卡都是这样的)，里面调用board_mmc_init或者cpu_mmc_init来完成是板子上的
+	控制器还是SOC的控制器。这里调用cpu_mmc_init，是在uboot/cpu/s5pv11x/cpu.c,这里是硬件初始化，在uboot/cpu/s5pv11x是很多
+	硬件初始化。在这里初始化了SD卡控制器时钟，gpio，等，在这个函数又调用了uboot/drivers/mmc/下的函数
+	printf("%ldMB\n", (mmc->capacity/(1024*1024/(1<<9)))); 打印大小，这个变量是以扇区为单位的，512字节
+	
+	env_relocate ();  环境变量的重定位，从SD卡读取到DDR
+	SD卡有一些(8个  大小0X400)扇区作为环境变量存储区域，但是烧录了uboot分区，kernel分区，rootfs分区，启动uboot读取ENV分区失败
+	时选择从uboot内部代码设置的默认的环境变量来使用，这套会被读到DDR，写到SD卡。
+	
+	gd->bd->bi_ip_addr = getenv_IPaddr ("ipaddr");   获取开发板IP地址，来源于环境变量
+	在函数中把getenv函数获取到的字符串格式的IP地址，用string_to_ip转换成点分十进制格式。IP地址由4个字节组成
+	
+	获取MAC地址，硬件网卡地址
+	i = getenv_r ("ethaddr", tmp, sizeof (tmp));
+	6个0-255数字组成
+	再X210_sd.h有配置，233行
+
+	devices_init ();   开发板硬件设备的初始化，放在这里初始化的都是驱动设备，从驱动框架衍生过来的，linux内核的驱动都有
+	相应的设备初始化函数，在内核启动过程就要一个叫devices_init ()的函数。这里作用并不是很大，uboot用到的之前已经初始化过了
+	
+	jumptable_init ();跳转表，记录了很多函数，这里只赋值了没有引用，没起作用。
+	
+	console_init_r ();控制台的第二阶段的初始化，第一阶段没做实质化操作。
+	
 	 
 	 
 	 
